@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.3
+// @version      4.3.4
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -75,7 +75,7 @@ function wmeStudioBridgeNote(text, bad) {
   } catch (_) {   }
 }
 
-const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.2-2026-10-31z122', cloudSync: '4.3.0-2026-10-29' };
+const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.4-2026-11-01z129', cloudSync: '4.3.0-2026-10-29' };
 function wmeStudioCompareLibraryBuild(loaded, wanted) {
   if (loaded === wanted) return 0;
   const parse = value => {
@@ -339,7 +339,7 @@ const wmeStudioMain = () => {
         const values = readCopy(); let changed = false;
         for (const key of keys) { if (JSON.stringify(values[key]) !== JSON.stringify(dirty[key])) { values[key] = dirty[key]; changed = true; } }
         dirty = {};
-        if (changed) localStorage.setItem(COPY, JSON.stringify({ v: 1, saved: Date.now(), values }));
+        if (changed) localStorage.setItem(COPY, JSON.stringify({ v: 1, saved: Date.now(), by: typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? 'beta' : 'main', values }));
       } catch (_) { dirty = {}; }
     };
     const note = (key, value) => { if (!kept(key) || value === undefined || value === NONE) return; dirty[key] = value; if (!timer) timer = setTimeout(flush, 1000); };
@@ -368,8 +368,9 @@ const wmeStudioMain = () => {
       if (!(typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA) && !thenable(pending) && betaGone) {
         if (pending?.values) fromBeta = pending;
         else if (!restored) {
-          const saved = Number(JSON.parse(localStorage.getItem(COPY) || '{}')?.saved) || 0, copy = readCopy(), values = {};
-          if (saved > (Number(GM_getValue('wmeStudio.betaImport.v1', 0)) || 0)) for (const key of Object.keys(copy)) if (kept(key) && JSON.stringify(copy[key]) !== JSON.stringify(GM_getValue(key, NONE))) values[key] = copy[key];
+          const whole = JSON.parse(localStorage.getItem(COPY) || '{}') || {}, saved = Number(whole.saved) || 0, copy = readCopy(), values = {};
+          const answered = Number(GM_getValue('wmeStudio.betaImport.v1', 0)) || 0;
+          if ((whole.by === 'beta' || (!whole.by && !answered)) && saved > answered) for (const key of Object.keys(copy)) if (kept(key) && JSON.stringify(copy[key]) !== JSON.stringify(GM_getValue(key, NONE))) values[key] = copy[key];
           if (Object.keys(values).length) { fromBeta = { values, saved }; GM_setValue(BD, fromBeta); }
         }
       }
@@ -392,6 +393,20 @@ const wmeStudioMain = () => {
       betaDone() { fromBeta = null; GM_setValue('wmeStudio.betaData.v1', null); GM_setValue('wmeStudio.betaImport.v1', Date.now()); }
     };
   })();
+  const STUDIO_FEATURES_KEY = 'wmeStudio.features.v1', STUDIO_FEATURES_EVENT = 'wme-studio-features';
+  let studioFeatureCache = null;
+  function studioFeature(name) {
+    if (!studioFeatureCache) { try { const value = GM_getValue(STUDIO_FEATURES_KEY, null); studioFeatureCache = value && typeof value === 'object' && typeof value.then !== 'function' ? value : {}; } catch (_) { studioFeatureCache = {}; } }
+    return studioFeatureCache[name] === true;
+  }
+  function setStudioFeatures(value) {
+    if (!value || typeof value !== 'object') return;
+    const next = Object.fromEntries(Object.entries(value).filter(([key]) => /^\w{1,40}$/.test(key)).map(([key, on]) => [key, on === true]));
+    if (JSON.stringify(next) === JSON.stringify(studioFeatureCache || {})) return;
+    studioFeatureCache = next;
+    try { GM_setValue(STUDIO_FEATURES_KEY, next); } catch (_) {   }
+    try { document.dispatchEvent(new CustomEvent(STUDIO_FEATURES_EVENT)); } catch (_) {   }
+  }
 
   const NativeMutationObserver = globalThis.MutationObserver;
   let observerTurn = 0, observerTurnTimer = 0, observerLoopWarned = false;
@@ -418,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.3';
+  const USERSCRIPT_VERSION = '4.3.4';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -1887,6 +1902,48 @@ $root label { vertical-align: middle; }
         const tab = button && (button.closest('.tab-pane,[id^="sidepanel-"]') || button.parentElement);
         if (!tab || tab.id === 'sidebar') return;
         tab.setAttribute(MARK, ''); registerRoot(tab, 'ut-kadastrs-tab'); found = tab; seen = true;
+      };
+      const timer = setInterval(look, 4000);
+      setTimeout(look, 1500);
+    })();
+    registerCompatibilityAdapter({ id: 'ur-color-selector', selectors: ['[data-wme-studio-urcs-tab]'], css: String.raw`
+$root { color: var(--wme-studio-text) !important; }
+$root :is(button,input[type="button"],input[type="submit"]):not([class*="wz-"]) {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 30px; min-width: 0; padding: 2px 12px 0 !important;
+  vertical-align: middle; border: 1px solid var(--wme-studio-border) !important; border-radius: var(--wme-studio-button-radius, var(--wme-studio-radius)) !important;
+  background: var(--wme-studio-input) !important; color: var(--wme-studio-text) !important; box-shadow: none !important; font: 600 12.5px/1 var(--ws-font) !important; white-space: nowrap; cursor: pointer;
+  /* Inter sits a little high at line-height 1: 2px at the top centres the words */
+}
+$root :is(button,input[type="button"],input[type="submit"]):not([class*="wz-"]):hover:not(:disabled) { background: var(--wme-studio-hover) !important; }
+$root :is(button,input[type="button"],input[type="submit"]):not([class*="wz-"]):disabled { opacity: .5; cursor: default; }
+$root :is(button,input,select):focus-visible { outline: 2px solid var(--wme-studio-accent); outline-offset: 2px; }
+$root :is(input[type="text"],input[type="number"],input[type="search"],input:not([type]),select) {
+  box-sizing: border-box; height: 30px; padding: 0 10px !important; vertical-align: middle;
+  border: 1px solid var(--wme-studio-border) !important; border-radius: var(--wme-studio-radius) !important;
+  background: var(--wme-studio-input) !important; color: var(--wme-studio-text) !important; box-shadow: none !important; font: 13px/normal var(--ws-font) !important;
+}
+$root :is(input[type="text"],input[type="number"],input[type="search"],input:not([type]),select):focus { border-color: var(--wme-studio-accent) !important; outline: none; }
+$root select option { background: var(--wme-studio-surface, #292d31); color: var(--wme-studio-text); }
+$root input[type="color"] { box-sizing: border-box; width: 30px; height: 30px; padding: 2px !important; vertical-align: middle; border: 1px solid var(--wme-studio-border) !important; border-radius: 8px !important; background: var(--wme-studio-input) !important; cursor: pointer; }
+$root input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+$root input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 5px; }
+$root input[type="color"]::-moz-color-swatch { border: 0; border-radius: 5px; }
+$root :is(input[type="checkbox"],input[type="radio"]) { accent-color: var(--wme-studio-accent); vertical-align: middle; }
+$root :is(table,th,td,hr,fieldset) { border-color: var(--wme-studio-border) !important; }
+$root :is(label,span,p,h1,h2,h3,h4,h5,h6,legend,th) { vertical-align: middle; }
+` }, true);
+    (() => {
+      const MARK = 'data-wme-studio-urcs-tab', NAME = /^\s*(?:UR\s*Colou?rs|UR\s*Kleuren|URCS|UR Color Selector)\s*$/i;
+      let found = null, seen = false, tries = 0;
+      const look = () => {
+        if (found?.isConnected) return;
+        if (!seen && ++tries > 75) { clearInterval(timer); return; }
+        found = null;
+        const link = [...document.querySelectorAll('#sidebar :is(.userscripts-drawer-tabs,#user-tabs) .nav-tabs a, #sidebar [role="tab"]')].find(node => NAME.test(node.textContent || node.title || ''));
+        const key = String(link?.getAttribute('href') || '').replace(/^#/, '') || link?.getAttribute('aria-controls') || '';
+        const pane = key ? document.getElementById(key) : null;
+        if (!pane || pane.id === 'sidebar') return;
+        pane.setAttribute(MARK, ''); registerRoot(pane, 'ur-color-selector'); found = pane; seen = true;
       };
       const timer = setInterval(look, 4000);
       setTimeout(look, 1500);
@@ -6467,7 +6524,14 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
       } catch (_) { reportStudioError("connectZoom",_); }
       updateZoom();
     }
-    function message(text) { ensureUI(); const status=shadow.querySelector('.status'); status.textContent=text; status.hidden=!text; }
+    function message(text, action=null) {
+      ensureUI(); const status=shadow.querySelector('.status'); status.textContent=text; status.hidden=!text;
+      if (text && action) {
+        const go=document.createElement('button'); go.type='button'; go.className='status-act'; go.textContent=action.label; go.addEventListener('click',action.run);
+        if (![...shadow.querySelectorAll('style')].some(style=>style.textContent.includes('status-act'))) go.style.cssText='margin-left:8px;height:26px;padding:0 10px;border:0;border-radius:7px;background:#0099ff;color:#fff;font:600 12px/1 inherit;cursor:pointer;vertical-align:middle';
+        status.append(' ',go);
+      }
+    }
     const editIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg>';
     const removeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>';
     const tagIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.5V4h8.5l8.5 8.5-8.5 8.5Z"/><path d="M8 8.5h.01"/></svg>';
@@ -6709,13 +6773,15 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
           setTimeout(() => { if (win.isConnected && operation.arriving !== win) win.removeAttribute('data-wme-studio-request-arriving'); }, 1500);
         }
         try { await sdk.IssueTracker.closePanel(); } catch (studioError) { reportStudioError('nativeOpen', studioError); }
-        for (let wait = 0; wait < 20 && currentPanel(); wait++) await new Promise(done => setTimeout(done, 50));
+        for (let wait = 0; wait < 40 && currentPanel(); wait++) await new Promise(done => setTimeout(done, 25));
       }
       if (stale()) return;
       try {
         if (sdk?.IssueTracker?.showPanel && Number.isFinite(item.mapIssueId)) return await sdk.IssueTracker.showPanel({issueTrackerId:item.mapIssueId,type:'mapUpdateRequest'});
-      } catch (error) { reportStudioError("nativeOpen",error);
-        if (!item.model && !item.where || !pageWindow.W?.reqres?.request) throw error;
+      } catch (error) {
+        const missing = /not found in data model/i.test(String(error?.message || error));
+        if (!missing) reportStudioError("nativeOpen",error);
+        if (!item.model && !item.where || !pageWindow.W?.reqres?.request) { if (missing && !item.model) { try { error.hidden = true; } catch (_) {   } } throw error; }
       }
       if (!item.model || !item.model.getID?.()) {
         const fresh=legacyRequest(item.id);
@@ -6728,6 +6794,7 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
           const issue=Number(item.model?.getMapIssueId?.());
           if (Number.isFinite(issue)) { item.mapIssueId=issue; saveItems(); if (sdk?.IssueTracker?.showPanel) return await sdk.IssueTracker.showPanel({issueTrackerId:issue,type:'mapUpdateRequest'}); }
         }
+        if (!item.model) { const hidden=new Error('Hidden by the Review filters'); hidden.hidden=true; throw hidden; }
       }
       if (!item.model || !pageWindow.W?.reqres?.request) throw new Error('This Update Request cannot be reopened yet.');
       return pageWindow.W.reqres.request('problems:browse',{problem:item.model,showNext:false});
@@ -7044,7 +7111,7 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
       operation.timer=setTimeout(()=>failedRestore(operation),item.model?5000:10000);
       const start=()=>{
         if (pendingRestore!==operation) return;
-        try { Promise.resolve(nativeOpen(item,operation)).catch((studioError)=>{ reportStudioError("restore",studioError); return failedRestore(operation); }); }
+        try { Promise.resolve(nativeOpen(item,operation)).catch((studioError)=>{ if (studioError?.hidden) operation.hidden=true; else reportStudioError("restore",studioError); return failedRestore(operation); }); }
         catch (_) { reportStudioError("restore",_); failedRestore(operation); }
       };
       if (operation.lead) requestAnimationFrame(()=>setTimeout(start,0)); else start();
@@ -7057,6 +7124,7 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
       operation.lead?.cancel();
       operation.arriving?.removeAttribute('data-wme-studio-request-arriving');
       if (operation.swap && !operation.rollback) { restore(operation.swap,null,true); return; }
+      if (operation.hidden) { const { id, where } = operation.item; message(tr('WME’s Review filters hide #{0} on the map, so it can’t open here.', id), { label: tr('Open in a new tab'), run: () => { try { window.open(studioRequestLink(id, where), '_blank'); } catch (_) {   } message(''); } }); return; }
       message(tr('I couldn’t open that request. It’s still saved in the header; try again, or remove it if it was closed.'));
     }
     function finishRestore(panel) {
@@ -7570,7 +7638,7 @@ html[data-wme-studio-chat="on"] div:has(> [data-testid="conversation-list"]) + d
         const attrs = legacyRequest(next.id)?.attributes;
         if (attrs?.open === false || attrs?.resolution != null) { visited.add(next.id); return openNext(panel); }
         next.row.click(); visited.add(next.id);
-        for (let tick = 0; tick < 15; tick++) { await new Promise(done => setTimeout(done, 100)); readCurrent(); if (String(active?.id) === String(next.id)) return true; }
+        for (let tick = 0; tick < 30; tick++) { await new Promise(done => setTimeout(done, 50)); readCurrent(); if (String(active?.id) === String(next.id)) return true; }
         if (String(active?.id) !== String(fromId) && active?.id) return true;
       }
       const model = legacyRequest(next.id), issue = Number(model?.attributes?.mapIssueId ?? model?.getMapIssueId?.());
@@ -9778,7 +9846,14 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       }
       bar.setAttribute('aria-label', tr('Reply buttons'));
       bar.dataset.key = key;
-      bar.replaceChildren(...items.map(item => {
+      const arrow = (side, label) => {
+        const node = el('button', `ws-rb-arrow ${side}`); node.type = 'button'; node.tabIndex = -1; node.title = label; node.setAttribute('aria-label', label);
+        node.innerHTML = svg(side === 'left' ? '<path d="M15 6l-6 6 6 6"/>' : '<path d="m9 6 6 6-6 6"/>');
+        node.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); scrollButtons(bar, side === 'left' ? -1 : 1); });
+        return node;
+      };
+      const arrows = paintButtons.arrows ??= String(studioPart('p430L8306') || '').includes('ws-rb-arrow');
+      bar.replaceChildren(...(arrows ? [arrow('left', tr('Earlier reply buttons'))] : []), ...items.map(item => {
         const button = el('button', 'ws-rb'); button.type = 'button'; button.title = item.text;
         const folderIcon = !item.builtIn && item.group ? FOLDER_LOOK.icons[folderMeta[item.group]?.icon] : '';
         const color = item.action ? ACTION_COLORS[item.action] : !item.builtIn && item.group ? folderColor(item.group) : 'var(--wme-studio-accent, #0099ff)';
@@ -9787,7 +9862,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         button.append(el('span', '', item.title));
         button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); insert(state, item.text, item); });
         return button;
-      }));
+      }), ...(arrows ? [arrow('right', tr('More reply buttons'))] : []));
       if (bar.nextElementSibling !== form) form.before(bar);
       alignButtons(bar); fadeButtons(bar);
     }
@@ -9798,6 +9873,15 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const left = `${Math.max(0, Math.round((box.left - row.left) / zoom))}px`, right = `${Math.max(0, Math.round((row.right - Math.min(row.right, end)) / zoom))}px`;
       if (bar.style.paddingLeft !== left) bar.style.paddingLeft = left;
       if (bar.style.paddingRight !== right) bar.style.paddingRight = right;
+    }
+    function scrollButtons(bar, way) {
+      const view = bar.getBoundingClientRect(), pad = 34, buttons = [...bar.querySelectorAll('.ws-rb')];
+      const target = way > 0 ? buttons.find(button => button.getBoundingClientRect().right > view.right - pad + 1) : [...buttons].reverse().find(button => button.getBoundingClientRect().left < view.left + pad - 1);
+      if (!target) return;
+      const box = target.getBoundingClientRect(), zoom = bar.currentCSSZoom || 1;
+      const by = way > 0 ? Math.max(box.right - (view.right - pad), (box.left - view.left - pad)) : box.left - (view.left + pad);
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || !settings.motion;
+      bar.scrollBy({ left: by / zoom, behavior: reduce ? 'auto' : 'smooth' });
     }
     function fadeButtons(bar) {
       const room = bar.scrollWidth - bar.clientWidth, left = room > 1 && bar.scrollLeft > 1, right = room > 1 && bar.scrollLeft < room - 1;
@@ -10169,7 +10253,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     const replyValue = panel => { const one = field(panel); return String(one?.value ?? one?.shadowRoot?.querySelector('textarea')?.value ?? ''); };
     const commentCount = panel => panel.querySelectorAll('.conversation-view .comment-list > :is(.comment, wz-list-item)').length;
     const isUpdate = panel => panel?.matches?.('.problem-edit') && !!panel.closest('#ISSUE_WINDOW_UPDATE_REQUEST') && !panel.closest('#wme-studio-compact-layout-editor');
-    const wait = (test, ms) => new Promise(resolve => { const end = Date.now() + ms; const tick = () => { if (test()) resolve(true); else if (Date.now() > end) resolve(false); else setTimeout(tick, 100); }; tick(); });
+    const wait = (test, ms, every = 100) => new Promise(resolve => { const end = Date.now() + ms; const tick = () => { if (test()) resolve(true); else if (Date.now() > end) resolve(false); else setTimeout(tick, every); }; tick(); });
     function make(tag, className, html) { const node = document.createElement(tag); if (className) node.className = className; if (html != null) node.innerHTML = html; return node; }
     function button(className, icon) { const node = make('button', `ws-reply-btn ${className}`, svg(icon) + '<span></span>'); node.type = 'button'; node.setAttribute('data-ws-keep', ''); return node; }
     function build(state) {
@@ -10210,7 +10294,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       setProp(state.signButton, 'hidden', !signature);
       setProp(state.signButton, 'disabled', !!signature && replyValue(state.panel).trimEnd().endsWith(signature));
       setProp(state.externalButton, 'hidden', !text || !target || target.language === target.mine || state.busy || (target.can && state.failed !== text));
-      setText(state.nextButton, text ? tr('Send & next') : tr('Next request'));
+      setText(state.nextButton, state.sending === 'send' ? tr('Sending…') : state.sending === 'open' ? tr('Opening the next…') : text ? tr('Send & next') : tr('Next request'));
       setProp(state.nextButton, 'title', (settings.requestNextInTracker ? tr(text ? 'Send, then open the next update request in the issue tracker' : 'Open the next update request in the issue tracker') : text ? tr('Send, then open the nearest open update request') : tr('Open the nearest open update request')) + ` (${keyName(true)})`);
       setProp(state.nextButton, 'disabled', !!state.sending);
       setProp(state.original, 'hidden', state.mine == null);
@@ -10280,14 +10364,15 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const state = states.get(panel);
       if (state?.sending) return;
       let trackerPlan = null; try { trackerPlan = requestMinimizer.trackerNext(panel); } catch (studioError) { reportStudioError('sendAndNext', studioError); }
-      if (state) { state.sending = true; paint(state); }
+      if (state) { state.sending = replyValue(panel).trim() ? 'send' : 'open'; paint(state); }
       try {
         if (replyValue(panel).trim()) {
           const before = commentCount(panel);
           if (!send(panel)) return;
-          if (!await wait(() => !panel.isConnected || commentCount(panel) > before || !replyValue(panel).trim(), 6000)) return;
-          await new Promise(done => setTimeout(done, 300));
+          if (!await wait(() => !panel.isConnected || commentCount(panel) > before || !replyValue(panel).trim(), 6000, 50)) return;
+          if (panel.isConnected && commentCount(panel) <= before) await new Promise(done => setTimeout(done, 150));
         }
+        if (state) { state.sending = 'open'; if (panel.isConnected) paint(state); }
         await requestMinimizer.openNext(panel, trackerPlan);
       } finally { if (state) { state.sending = false; if (panel.isConnected) paint(state); } }
     }
@@ -11238,180 +11323,608 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     return Object.freeze({ SELECTOR, words, refresh() {}, hide() {} });
   })();
   const placeTemplates = (() => {
-    const KEY = 'wmeStudio.placeTemplates.v1', MAX = 40, FIELDS = ['url', 'phone', 'services', 'openingHours'];
-    const tr = (text, ...values) => { try { return globalThis.WMEStudioI18n?.t?.(text, ...values) ?? values.reduce((out, value, index) => out.replaceAll(`{${index}}`, value), text); } catch (_) { return text; } };
+    const KEY = 'wmeStudio.placeTemplates.v1', MAX = 60, QUICK = 5;
+    const FIELDS = ['placeName', 'aliases', 'brand', 'categories', 'url', 'phone', 'description', 'openingHours', 'services', 'lockRank'];
+    const LABEL = { placeName: 'Name', aliases: 'Alternate names', brand: 'Brand', categories: 'Category', url: 'Website', phone: 'Phone', description: 'Description', openingHours: 'Opening hours', services: 'Services', lockRank: 'Lock' };
+    const SDK_FIELD = { placeName: 'name' };
+    const PATTERNED = new Set(['placeName', 'aliases', 'description']);
+    const VARS = ['name', 'street', 'number', 'city', 'brand'];
+    const HUES = { blue: '#2f9bff', green: '#30a46c', yellow: '#e2a400', orange: '#f08a3c', red: '#e5484d', purple: '#8e6cf0', teal: '#12a594', grey: '#8b949e' };
+    const SERVICES = { AIR_CONDITIONING: 'Air conditioning', CREDIT_CARDS: 'Credit cards', CURBSIDE_PICKUP: 'Curbside pickup', DELIVERIES: 'Deliveries', DRIVETHROUGH: 'Drive-through', OUTSIDE_SEATING: 'Outside seating', PARKING_FOR_CUSTOMERS: 'Parking for customers', RESERVATIONS: 'Reservations', RESTROOMS: 'Restrooms', TAKE_AWAY: 'Take away', VALLET_SERVICE: 'Valet service', WHEELCHAIR_ACCESSIBLE: 'Wheelchair accessible', WI_FI: 'Wi-Fi', AIRPORT_SHUTTLE: 'Airport shuttle', CAR_WASH: 'Car wash', CARPOOL_PARKING: 'Carpool parking', COVERED: 'Covered', DISABILITY_PARKING: 'Disability parking', EV_CHARGING_STATION: 'EV charging station', ON_SITE_ATTENDANT: 'On-site attendant', PARK_AND_RIDE: 'Park and ride', SECURITY: 'Security', VALET: 'Valet' };
+    const tr = (text, ...values) => { try { return globalThis.WMEStudioI18n?.t?.(text, ...values) ?? values.reduce((out, value, index) => out.replaceAll(`{${index}}`, value), text); } catch (_) { return values.reduce((out, value, index) => out.replaceAll(`{${index}}`, value), text); } };
     const uiLocale = () => { try { return globalThis.WMEStudioI18n?.current?.() || document.documentElement.lang || 'en'; } catch (_) { return 'en'; } };
     const svg = path => `<svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg>`;
-    const ICON = { tpl: '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>', chev: '<path d="m6 9 6 6 6-6"/>', save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>' };
+    const ICON = { tpl: '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>', chev: '<path d="m6 9 6 6 6-6"/>', save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', open: '<path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>', undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>', spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"/>', minus: '<path d="M6 12h12"/>', warn: '<path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/>' };
+    const fold = text => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase();
+    const uid = () => Math.random().toString(36).slice(2, 10);
     let list = null, frame = 0;
     const cleanHours = value => (Array.isArray(value) ? value : []).filter(item => item && Array.isArray(item.days) && /^\d{1,2}:\d\d$/.test(item.fromHour) && /^\d{1,2}:\d\d$/.test(item.toHour))
       .slice(0, 14).map(item => ({ days: [...new Set(item.days.map(Number).filter(day => day >= 0 && day <= 6))].sort(), fromHour: item.fromHour, toHour: item.toHour })).filter(item => item.days.length);
-    const clean = value => (Array.isArray(value) ? value : []).filter(item => item && typeof item === 'object').slice(0, MAX).map(item => {
-      const one = { id: String(item.id || Math.random().toString(36).slice(2, 10)).slice(0, 20), name: String(item.name || '').trim().slice(0, 50), quick: item.quick === true, shortcut: [...String(item.shortcut || '').replace(/[^\p{L}\p{N}]/gu, '').toLocaleUpperCase()].slice(0, 3).join('') };
+    const words = value => [...new Set((Array.isArray(value) ? value : []).map(word => String(word).trim().slice(0, 40)).filter(Boolean))].slice(0, 12);
+    function cleanOne(item) {
+      if (!item || typeof item !== 'object') return null;
+      const one = {
+        id: String(item.id || uid()).replace(/[^\w-]/g, '').slice(0, 20) || uid(), name: String(item.name || '').replace(/\s+/g, ' ').trim().slice(0, 50), quick: item.quick === true,
+        shortcut: [...String(item.shortcut || '').replace(/[^\p{L}\p{N}]/gu, '').toLocaleUpperCase()].slice(0, 3).join(''), color: Object.hasOwn(HUES, item.color) ? item.color : '',
+        folder: String(item.folder || '').replace(/\s+/g, ' ').trim().slice(0, 30), uses: Math.max(0, Math.min(1e6, Math.round(Number(item.uses) || 0))), lastUsed: Number(item.lastUsed) > 0 ? Number(item.lastUsed) : 0,
+        created: Number(item.created) > 0 ? Number(item.created) : 0,
+        match: { categories: words(item.match?.categories).map(word => word.replace(/[^\w]/g, '')).filter(Boolean), words: words(item.match?.words) }
+      };
+      if (typeof item.placeName === 'string' && item.placeName.trim()) one.placeName = item.placeName.slice(0, 120);
+      if (Array.isArray(item.aliases)) one.aliases = words(item.aliases).map(alias => alias.slice(0, 120));
+      if (typeof item.brand === 'string') one.brand = item.brand.slice(0, 80);
+      if (Array.isArray(item.categories) && item.categories.length) one.categories = [...new Set(item.categories.map(String).filter(id => /^\w+$/.test(id)))].slice(0, 5);
       if (typeof item.url === 'string') one.url = item.url.slice(0, 512);
       if (typeof item.phone === 'string') one.phone = item.phone.slice(0, 100);
-      if (Array.isArray(item.services)) one.services = [...new Set(item.services.map(String))].slice(0, 40);
+      if (typeof item.description === 'string') one.description = item.description.slice(0, 500);
       if (Array.isArray(item.openingHours)) one.openingHours = cleanHours(item.openingHours);
-      return one;
-    }).filter(item => item.name && FIELDS.some(field => field in item));
+      if (Array.isArray(item.services)) one.services = [...new Set(item.services.map(String).filter(id => /^[A-Z_]+$/.test(id)))].slice(0, 40);
+      if (Number.isInteger(item.lockRank) && item.lockRank >= 0 && item.lockRank <= 6) one.lockRank = item.lockRank;
+      return one.name && FIELDS.some(field => field in one) ? one : null;
+    }
+    const clean = value => {
+      const seen = new Set();
+      return (Array.isArray(value) ? value : []).map(cleanOne).filter(item => item && !seen.has(item.id) && seen.add(item.id)).slice(0, MAX);
+    };
     async function load() { if (!list) { try { list = clean(await Promise.resolve(studioKeep.get(KEY, []))); } catch (_) { list = []; } } return list; }
-    const save = () => { try { Promise.resolve(studioKeep.set(KEY, list)).catch(error => reportStudioError('place templates save', error)); } catch (error) { reportStudioError('place templates save', error); } queue(); };
+    const save = () => { try { Promise.resolve(studioKeep.set(KEY, list)).catch(error => reportStudioError('place templates save', error)); } catch (error) { reportStudioError('place templates save', error); } queue(); notifyPages(); };
     const sdk = () => studioSDK.get();
     function selected() {
       try { const selection = sdk()?.Editing?.getSelection?.(); return selection?.objectType === 'venue' ? (selection.ids || []).map(String) : []; } catch (_) { return []; }
     }
     const venue = id => { try { return sdk()?.DataModel?.Venues?.getById?.({ venueId: id }) || null; } catch (_) { return null; } };
-    function summary(item) {
-      const parts = [];
-      if ('url' in item) parts.push(item.url ? tr('Website') : tr('No website'));
-      if ('phone' in item) parts.push(item.phone ? tr('Phone') : tr('No phone'));
-      if ('services' in item) parts.push(item.services.length === 1 ? tr('1 service') : tr('{0} services', item.services.length));
-      if ('openingHours' in item) parts.push(hoursText(item.openingHours));
-      return parts.join(' · ');
+    const rank = () => { try { const value = Number(sdk()?.State?.getUserInfo?.()?.rank); return Number.isFinite(value) ? value : 0; } catch (_) { return 0; } };
+    function address(id) {
+      try { const found = sdk()?.DataModel?.Venues?.getAddress?.({ venueId: id }); return { street: found?.street?.name || '', city: found?.city?.name || '', number: found?.houseNumber || '' }; } catch (_) { return { street: '', city: '', number: '' }; }
     }
+    let categoryNames = null;
+    function categories() {
+      if (!categoryNames) { try { categoryNames = new Map((sdk()?.DataModel?.Venues?.getAllVenueCategories?.() || []).map(item => [String(item.id), String(item.localizedName || item.id)])); } catch (_) { categoryNames = new Map(); } if (!categoryNames.size) categoryNames = null; }
+      return categoryNames || new Map();
+    }
+    const categoryName = id => categories().get(String(id)) || String(id).toLowerCase().replace(/_/g, ' ').replace(/^./, letter => letter.toUpperCase());
+    const serviceName = id => tr(SERVICES[id] || String(id).toLowerCase().replace(/_/g, ' '));
+    function fill(pattern, place) {
+      const out = String(pattern || '').replace(/\{(\w+)\}/g, (whole, key) => (VARS.includes(key.toLowerCase()) ? String(place.vars[key.toLowerCase()] || '') : whole));
+      return out.replace(/\s+/g, ' ').replace(/\s+([,.)·-])/g, '$1').replace(/([(])\s+/g, '$1').replace(/\(\)/g, '').trim();
+    }
+    function snapshot(id) {
+      const one = venue(id); if (!one) return null;
+      const where = address(id);
+      return { id, venue: one, vars: { name: one.name || '', street: where.street, number: where.number, city: where.city, brand: one.brand || '' } };
+    }
+    const sameList = (one, two) => JSON.stringify([...one].map(String).sort()) === JSON.stringify([...two].map(String).sort());
+    const hoursKey = hours => JSON.stringify(cleanHours(hours).map(item => [item.days.join(''), item.fromHour.padStart(5, '0'), item.toHour.padStart(5, '0')]).sort());
     function hoursText(hours) {
+      hours = cleanHours(hours);
       if (!hours.length) return tr('No open hours');
       const day = n => { try { return new Intl.DateTimeFormat(uiLocale(), { weekday: 'short' }).format(new Date(2026, 0, 4 + n)); } catch (_) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n]; } };
       const first = hours[0], runs = [];
+      if (first.days.length === 7) return `${tr('Every day')} ${first.fromHour}–${first.toHour}${hours.length > 1 ? ' +' + (hours.length - 1) : ''}`;
       for (const n of first.days) { const last = runs.at(-1); if (last && n === last[1] + 1) last[1] = n; else runs.push([n, n]); }
       const days = runs.map(([from, to]) => (from === to ? day(from) : to === from + 1 ? `${day(from)} ${day(to)}` : `${day(from)}–${day(to)}`)).join(' ');
       return `${days} ${first.fromHour}–${first.toHour}${hours.length > 1 ? ' +' + (hours.length - 1) : ''}`;
     }
+    function plan(item, place, mode = 'fill', picks = null) {
+      const one = place.venue, rows = [], myRank = rank();
+      const text = (field, before, after) => { before = String(before || ''); after = String(after || ''); return { field, before, after, kind: after === before || (!after && !before) ? 'same' : !before ? 'new' : 'replace' }; };
+      for (const field of FIELDS) {
+        if (!(field in item)) continue;
+        let row;
+        if (field === 'placeName') row = text(field, one.name, fill(item.placeName, place));
+        else if (field === 'brand' || field === 'url' || field === 'phone') row = text(field, one[field], item[field]);
+        else if (field === 'description') row = text(field, one.description, fill(item.description, place));
+        else if (field === 'aliases') {
+          const have = (one.aliases || []).map(String), adds = item.aliases.map(alias => fill(alias, place)).filter(alias => alias && alias !== one.name && !have.some(other => fold(other) === fold(alias)));
+          row = { field, before: have.join(', '), after: adds.join(', '), value: [...have, ...adds], kind: adds.length ? (have.length ? 'add' : 'new') : 'same', count: adds.length };
+        } else if (field === 'services') {
+          const have = (one.services || []).map(String), adds = item.services.filter(id => !have.includes(id));
+          row = { field, before: have.map(serviceName).join(', '), after: adds.map(serviceName).join(', '), value: [...have, ...adds], kind: adds.length ? (have.length ? 'add' : 'new') : 'same', count: adds.length };
+        } else if (field === 'categories') {
+          const have = (one.categories || []).map(String);
+          row = { field, before: have.map(categoryName).join(', '), after: item.categories.map(categoryName).join(', '), value: [...item.categories], kind: sameList(have, item.categories) ? 'same' : have.length ? 'replace' : 'new' };
+        } else if (field === 'openingHours') {
+          const have = one.openingHours || [];
+          row = { field, before: have.length ? hoursText(have) : '', after: hoursText(item.openingHours), value: item.openingHours.map(hour => ({ ...hour, days: [...hour.days] })), kind: hoursKey(have) === hoursKey(item.openingHours) ? 'same' : have.length ? 'replace' : 'new' };
+        } else if (field === 'lockRank') {
+          const have = Number(one.lockRank) || 0;
+          row = { field, before: tr('Level {0}', have + 1), after: tr('Level {0}', item.lockRank + 1), value: item.lockRank, kind: have === item.lockRank ? 'same' : item.lockRank > myRank || have > myRank ? 'locked' : 'replace' };
+        }
+        if (!('value' in row)) row.value = row.after;
+        row.label = tr(LABEL[field]);
+        const allowed = row.kind === 'new' || row.kind === 'add' || (row.kind === 'replace' && mode === 'replace');
+        row.on = row.kind !== 'same' && row.kind !== 'locked' && (picks && field in picks ? picks[field] : allowed);
+        rows.push(row);
+      }
+      return rows;
+    }
+    let lastApply = null;
+    async function update(id, changes) {
+      let allowed = true; try { allowed = sdk().DataModel.Venues.hasPermissions?.({ venueId: id }) !== false; } catch (_) { allowed = true; }
+      if (!allowed) throw new Error(tr('you can’t edit it here'));
+      await sdk().DataModel.Venues.updateVenue({ venueId: id, ...changes });
+    }
+    async function applyTo(item, ids, mode, picks) {
+      const results = [], undo = [];
+      for (const id of ids) {
+        const place = snapshot(id);
+        if (!place) { results.push({ id, name: '', done: 0, error: tr('not loaded') }); continue; }
+        const rows = plan(item, place, mode, picks).filter(row => row.on), changes = {}, before = {};
+        for (const row of rows) {
+          const key = SDK_FIELD[row.field] || row.field;
+          changes[key] = row.value;
+          const had = place.venue[key];
+          before[key] = Array.isArray(had) ? JSON.parse(JSON.stringify(had)) : key === 'lockRank' ? Number(had) || 0 : String(had ?? '');
+        }
+        const name = place.venue.name || categoryName(place.venue.categories?.[0] || '') || tr('Place');
+        if (!rows.length) { results.push({ id, name, done: 0, nothing: true }); continue; }
+        try { await update(id, changes); undo.push({ id, before }); results.push({ id, name, done: rows.length, fields: rows.map(row => row.label) }); }
+        catch (error) { results.push({ id, name, done: 0, error: String(error?.message || error).slice(0, 120) }); }
+      }
+      if (undo.length) {
+        lastApply = { name: item.name, places: undo };
+        const current = list.find(one => one.id === item.id);
+        if (current) { current.uses = (current.uses || 0) + 1; current.lastUsed = Date.now(); save(); }
+      }
+      return results;
+    }
+    async function undoLast() {
+      const last = lastApply; if (!last) return 0;
+      lastApply = null; let back = 0;
+      for (const place of last.places) { try { await update(place.id, place.before); back++; } catch (error) { reportStudioError('place templates undo', error); } }
+      return back;
+    }
+    const dismissed = new Set();
+    function matches(item, place) {
+      const rules = item.match; if (!rules.categories.length && !rules.words.length) return false;
+      const cats = (place.venue.categories || []).map(String);
+      if (rules.categories.length && !rules.categories.some(id => cats.includes(id))) return false;
+      if (rules.words.length) { const hay = fold(`${place.venue.name || ''} ${place.venue.brand || ''} ${(place.venue.aliases || []).join(' ')}`); if (!rules.words.some(word => hay.includes(fold(word)))) return false; }
+      return true;
+    }
+    function suggestion(id) {
+      if (dismissed.has(id) || !list?.length) return null;
+      const place = snapshot(id); if (!place) return null;
+      let best = null;
+      for (const item of list) {
+        if (!matches(item, place)) continue;
+        const rows = plan(item, place).filter(row => row.on);
+        if (rows.length && (!best || rows.length > best.rows.length || (rows.length === best.rows.length && item.uses > best.item.uses))) best = { item, rows };
+      }
+      return best;
+    }
     GM_addStyle(studioPart('p430L11976'));
     const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
-    const button = (text, icon, className = '') => { const node = el('button', className); node.type = 'button'; node.innerHTML = icon ? svg(icon) : ''; node.append(el('span', '', text)); return node; };
-    function note(bar, text, tone = '') {
+    const button = (text, icon, className = '') => { const node = el('button', className); node.type = 'button'; node.innerHTML = icon ? svg(icon) : ''; if (text != null) node.append(el('span', '', text)); return node; };
+    const initials = item => { if (item.shortcut) return item.shortcut; const parts = item.name.trim().split(/\s+/); return [...(parts.length > 1 ? parts.map(word => [...word][0]).join('') : item.name).toLocaleUpperCase()].slice(0, parts.length > 1 ? 3 : 2).join(''); };
+    const hueOf = item => HUES[item.color] || HUES[Object.keys(HUES)[[...item.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 7]];
+    const chip = (item, className = 'ws-ptpl-chip') => { const node = el('span', className, initials(item)); node.style.setProperty('--h', hueOf(item)); node.setAttribute('aria-hidden', 'true'); return node; };
+    function summary(item) {
+      const parts = FIELDS.filter(field => field in item).map(field => (field === 'services' ? (item.services.length === 1 ? tr('1 service') : tr('{0} services', item.services.length)) : field === 'openingHours' ? hoursText(item.openingHours) : tr(LABEL[field])));
+      return parts.slice(0, 4).join(', ') + (parts.length > 4 ? ` +${parts.length - 4}` : '');
+    }
+    function note(bar, text, tone = '', action = null) {
       let line = bar.querySelector(':scope > .ws-ptpl-note');
+      clearTimeout(bar.wsNoteTimer);
       if (!text) { line?.remove(); return; }
-      if (!line) { line = el('p', 'ws-ptpl-note'); bar.append(line); }
-      line.textContent = text; line.dataset.tone = tone;
-      clearTimeout(bar.wsNoteTimer); if (tone) bar.wsNoteTimer = setTimeout(() => line.remove(), 5000);
+      if (!line) { line = el('div', 'ws-ptpl-note'); bar.append(line); }
+      line.replaceChildren(el('span', '', text)); line.dataset.tone = tone;
+      if (action) { const go = button(action.label, action.icon || '', 'ws-ptpl-link'); go.addEventListener('click', action.run); line.append(go); }
+      if (tone) bar.wsNoteTimer = setTimeout(() => line.remove(), action ? 12000 : 6000);
     }
-    async function apply(bar, item) {
-      const ids = selected(); if (!ids.length) return;
-      const changes = {}; for (const field of FIELDS) if (field in item) changes[field] = field === 'openingHours' ? item.openingHours.map(hour => ({ ...hour, days: [...hour.days] })) : Array.isArray(item[field]) ? [...item[field]] : item[field];
-      let done = 0, failed = 0, why = '';
-      for (const id of ids) {
-        let allowed = true; try { allowed = sdk().DataModel.Venues.hasPermissions?.({ venueId: id }) !== false; } catch (_) { allowed = true; }
-        if (!allowed) { failed++; why ||= tr('you can’t edit it here'); continue; }
-        try { await sdk().DataModel.Venues.updateVenue({ venueId: id, ...changes }); done++; }
-        catch (error) { failed++; why ||= String(error?.message || error).slice(0, 120); }
+    const undoAction = bar => ({ label: tr('Undo'), icon: ICON.undo, run: () => undoLast().then(count => { note(bar, count === 1 ? tr('Undone on this place.') : tr('Undone on {0} places.', count), 'ok'); queue(); }) });
+    function resultText(results, name) {
+      const done = results.filter(result => result.done), filled = done.reduce((sum, result) => sum + result.done, 0), failed = results.filter(result => result.error);
+      if (results.length === 1) {
+        const one = results[0];
+        if (one.error) return [tr('This place couldn’t be changed: {0}', one.error), 'err'];
+        if (one.nothing) return [tr('“{0}” has nothing to add here: this place already has it all.', name), 'ok'];
+        return [filled === 1 ? tr('“{0}” filled in 1 thing. Save in WME to keep it.', name) : tr('“{0}” filled in {1} things. Save in WME to keep them.', name, filled), 'ok'];
       }
-      note(bar, failed ? (done === 1 ? tr('Put on 1 place. {0} couldn’t be changed: {1}', failed, why) : done ? tr('Put on {0} places. {1} couldn’t be changed: {2}', done, failed, why) : tr('This place couldn’t be changed: {0}', why))
-        : done === 1 ? tr('“{0}” put on this place. Save in WME to keep it.', item.name) : tr('“{0}” put on {1} places. Save in WME to keep it.', item.name, done), failed ? 'err' : 'ok');
+      if (!done.length) return [failed.length ? tr('No place could be changed: {0}', failed[0].error) : tr('These places already have everything “{0}” fills in.', name), failed.length ? 'err' : 'ok'];
+      return [tr('Filled in {0} things on {1} of {2} places. Save in WME to keep them.', filled, done.length, results.length), failed.length ? 'err' : 'ok'];
     }
-    function paintShortcuts(bar) {
-      const quick = bar.wsQuick;
-      const pinned = (list || []).filter(item => item.quick).slice(0, 5);
-      const key = JSON.stringify(pinned.map(item => [item.id, item.name, item.shortcut]));
+    async function quickApply(bar, item) {
+      const ids = selected(); if (!ids.length) return;
+      showHome(bar);
+      const results = await applyTo(item, ids, 'fill', null);
+      const [text, tone] = resultText(results, item.name);
+      note(bar, text, tone, results.some(result => result.done) ? undoAction(bar) : null);
+    }
+    function paintQuick(bar) {
+      const quick = bar.wsQuick, pinned = (list || []).filter(item => item.quick).slice(0, QUICK);
+      const key = JSON.stringify(pinned.map(item => [item.id, item.name, item.shortcut, item.color]));
       if (bar.wsQuickKey === key) return;
       bar.wsQuickKey = key;
       quick.replaceChildren(); quick.hidden = !pinned.length;
-      for (const item of pinned) {
-        const words = item.name.trim().split(/\s+/), initials = words.length > 1 ? words.map(word => [...word][0]).join('') : item.name;
-        const label = item.shortcut || [...initials.toLocaleUpperCase()].slice(0, 3).join('');
-        const use = button(label, '', 'ws-ptpl-shortcut');
-        use.title = item.name; use.setAttribute('aria-label', tr('Apply {0}', item.name));
-        use.addEventListener('click', () => { const current = list?.find(one => one.id === item.id); if (current) apply(bar, current); }); quick.append(use);
-      }
+      pinned.forEach((item, index) => {
+        const use = el('button', 'ws-ptpl-quickbtn'); use.type = 'button'; use.style.setProperty('--h', hueOf(item));
+        use.append(el('b', '', initials(item)), el('small', '', `Alt ${index + 1}`));
+        use.title = tr('{0}: fills what’s empty (Alt+{1})', item.name, index + 1); use.setAttribute('aria-label', tr('Apply {0}', item.name)); use.setAttribute('aria-keyshortcuts', `Alt+${index + 1}`);
+        use.addEventListener('click', () => { const current = list?.find(one => one.id === item.id); if (current) quickApply(bar, current); });
+        quick.append(use);
+      });
+    }
+    function paintSuggest(bar) {
+      const box = bar.wsSuggest, ids = selected();
+      const found = ids.length === 1 && bar.wsView === 'home' ? suggestion(ids[0]) : null;
+      const key = found ? `${ids[0]}|${found.item.id}|${found.rows.map(row => row.field).join()}` : '';
+      if (bar.wsSuggestKey === key) return;
+      bar.wsSuggestKey = key; box.replaceChildren(); box.hidden = !found;
+      if (!found) return;
+      const fields = found.rows.map(row => (row.count > 1 ? `${row.count} ${row.label.toLocaleLowerCase(uiLocale())}` : row.label.toLocaleLowerCase(uiLocale())));
+      const words = el('div', 'ws-ptpl-suggest-words');
+      words.append(el('b', '', tr('Looks like “{0}”', found.item.name)), el('span', '', found.rows.length === 1 ? tr('It fills in what this place is missing: {0}.', fields[0]) : tr('It fills in {0} things this place is missing: {1}.', found.rows.length, fields.join(', '))));
+      const row = el('div', 'ws-ptpl-row');
+      const review = button(tr('Review and apply'), '', 'primary'), later = button(tr('Not now'));
+      review.addEventListener('click', () => showPreview(bar, found.item));
+      later.addEventListener('click', () => { dismissed.add(ids[0]); bar.wsSuggestKey = null; paintSuggest(bar); });
+      row.append(review, later); words.append(row);
+      box.append(chip(found.item, 'ws-ptpl-chip big'), words);
     }
     function paintMenu(bar, menu) {
       menu.replaceChildren();
       if (!list.length) { menu.append(el('p', 'ws-ptpl-empty', tr('No templates yet. Fill in a place, then save it as a template.'))); return; }
-      for (const item of list) {
-        const row = el('div', 'ws-ptpl-item');
-        const use = el('button', 'ws-ptpl-apply'); use.type = 'button'; use.append(el('b', '', item.name), el('small', '', summary(item)));
-        use.title = tr('Put it on the selected places');
-        use.addEventListener('click', () => { menu.hidden = true; apply(bar, item); });
-        const del = el('button', 'ws-ptpl-del'); del.type = 'button'; del.innerHTML = svg(ICON.x); del.title = tr('Delete'); del.setAttribute('aria-label', tr('Delete {0}', item.name));
-        del.addEventListener('click', event => {
-          event.stopPropagation();
-          if (!del.hasAttribute('data-sure')) { del.setAttribute('data-sure', ''); del.textContent = tr('Delete'); setTimeout(() => { if (del.isConnected && del.hasAttribute('data-sure')) { del.removeAttribute('data-sure'); del.innerHTML = svg(ICON.x); } }, 3000); return; }
-          list = list.filter(one => one.id !== item.id); save(); paintMenu(bar, menu);
-        });
-        const pin = button(item.quick ? '★' : '☆', '', 'ws-ptpl-pin');
-        pin.title = tr(item.quick ? 'Remove quick button' : 'Add quick button'); pin.setAttribute('aria-label', tr(item.quick ? 'Remove quick button for {0}' : 'Add quick button for {0}', item.name)); pin.setAttribute('aria-pressed', String(item.quick));
-        pin.addEventListener('click', () => {
-          if (!item.quick && list.filter(one => one.quick).length >= 5) { note(bar, tr('You can keep up to 5 quick buttons. Remove one first.'), 'err'); return; }
-          item.quick = !item.quick; save(); paintShortcuts(bar); paintMenu(bar, menu);
-          menu.querySelectorAll('.ws-ptpl-pin')[list.indexOf(item)]?.focus({ preventScroll: true });
-        });
-        row.append(use, pin, del); menu.append(row);
-      }
+      const search = list.length > 8 ? el('input', 'ws-ptpl-search') : null;
+      const rows = el('div', 'ws-ptpl-menu-rows');
+      const paint = () => {
+        rows.replaceChildren();
+        const query = fold(search?.value || '');
+        const shown = [...list].sort((one, two) => (two.lastUsed || 0) - (one.lastUsed || 0) || one.name.localeCompare(two.name, uiLocale())).filter(item => !query || fold(`${item.name} ${item.folder} ${item.brand || ''}`).includes(query));
+        if (!shown.length) rows.append(el('p', 'ws-ptpl-empty', tr('No template matches “{0}”.', search.value)));
+        for (const item of shown) {
+          const use = el('button', 'ws-ptpl-item'); use.type = 'button';
+          const words = el('span', 'ws-ptpl-item-words'); words.append(el('b', '', item.name), el('small', '', summary(item)));
+          use.append(chip(item), words);
+          use.addEventListener('click', () => { menu.hidden = true; bar.wsPick.setAttribute('aria-expanded', 'false'); showPreview(bar, item); });
+          rows.append(use);
+        }
+      };
+      if (search) { search.type = 'search'; search.placeholder = tr('Search templates'); search.setAttribute('aria-label', tr('Search templates')); search.addEventListener('input', paint); menu.append(search); }
+      const manage = button(tr('Manage templates'), ICON.open, 'ws-ptpl-menu-manage');
+      manage.addEventListener('click', () => { menu.hidden = true; openManager(bar); });
+      menu.append(rows, manage); paint();
+      search?.focus({ preventScroll: true });
     }
-    function openForm(bar, form) {
-      const ids = selected(), one = ids.length === 1 ? venue(ids[0]) : null; if (!one) return;
-      form.replaceChildren();
-      const name = el('input'); name.type = 'text'; name.maxLength = 50; name.placeholder = tr('Template name, e.g. {0}', one.name || tr('Coffee shop chain')); name.value = one.name || '';
-      const shortLabel = el('label', 'ws-ptpl-short-label', tr('Quick button label (1–3 letters)'));
-      const shortcut = el('input'); shortcut.type = 'text'; shortcut.maxLength = 3; shortcut.placeholder = tr('Auto'); shortLabel.append(shortcut);
-      const fields = el('div', 'ws-ptpl-fields'), checks = {};
-      const describe = { url: [tr('Website'), one.url || tr('empty')], phone: [tr('Phone'), one.phone || tr('empty')], services: [tr('Services'), one.services?.length ? String(one.services.length) : tr('none')], openingHours: [tr('Open hours'), one.openingHours?.length ? hoursText(cleanHours(one.openingHours)) : tr('none')] };
-      for (const field of FIELDS) {
-        const label = el('label'), box = el('input'); box.type = 'checkbox';
-        box.checked = field === 'services' || field === 'openingHours' ? !!one[field]?.length : !!one[field];
-        checks[field] = box;
-        const words = el('span'), value = el('small', '', describe[field][1]); value.title = describe[field][1]; words.append(el('span', '', describe[field][0]), value);
-        label.append(box, words); fields.append(label);
+    function showPreview(bar, item, mode = 'fill', picks = {}) {
+      const ids = selected(); if (!ids.length) return;
+      bar.wsView = 'preview'; bar.wsMenu.hidden = true; note(bar, '');
+      const view = bar.wsPanel; view.replaceChildren(); view.hidden = false; bar.wsHome.hidden = true;
+      const editable = id => { try { return sdk().DataModel.Venues.hasPermissions?.({ venueId: id }) !== false; } catch (_) { return true; } };
+      const all = ids.map(snapshot).filter(Boolean), places = all.filter(place => editable(place.id)), blocked = all.length - places.length;
+      if (!places.length) { showHome(bar); note(bar, all.length === 1 ? tr('You can’t edit this place here.') : tr('You can’t edit these places here.'), 'err'); return; }
+      const head = el('div', 'ws-ptpl-head'); const title = el('div', 'ws-ptpl-head-words');
+      const to = places.length === 1 ? (places[0].venue.name || tr('This place')) : tr('To {0} places, each on its own', places.length);
+      title.append(el('b', '', tr('Apply “{0}”', item.name)), el('small', '', blocked ? `${to} · ${blocked === 1 ? tr('1 you can’t edit is left out') : tr('{0} you can’t edit are left out', blocked)}` : to));
+      const close = button(null, ICON.x, 'ws-ptpl-icon'); close.setAttribute('aria-label', tr('Close')); close.addEventListener('click', () => showHome(bar));
+      head.append(chip(item, 'ws-ptpl-chip big'), title, close);
+      const modes = el('div', 'ws-ptpl-seg'); modes.setAttribute('role', 'radiogroup'); modes.setAttribute('aria-label', tr('What to change'));
+      for (const [key, text] of [['fill', tr('Fill empty fields')], ['replace', tr('Replace too')]]) {
+        const one = button(text); one.setAttribute('role', 'radio'); one.setAttribute('aria-checked', String(mode === key));
+        one.addEventListener('click', () => { if (mode !== key) showPreview(bar, item, key, {}); }); modes.append(one);
       }
-      const row = el('div', 'ws-ptpl-row');
-      const cancel = button(tr('Cancel')), keep = button(tr('Save template'), ICON.check, 'primary');
-      cancel.addEventListener('click', () => { form.hidden = true; });
-      keep.addEventListener('click', () => {
-        const label = name.value.replace(/\s+/g, ' ').trim();
-        if (!label) { name.focus(); return; }
-        const picked = FIELDS.filter(field => checks[field].checked);
-        if (!picked.length) { note(bar, tr('Tick at least one thing to keep.'), 'err'); return; }
-        const item = { id: Math.random().toString(36).slice(2, 10), name: label, shortcut: shortcut.value };
-        for (const field of picked) item[field] = field === 'openingHours' ? cleanHours(one.openingHours) : field === 'services' ? [...(one.services || [])] : String(one[field] || '');
-        const same = list.findIndex(other => other.name.toLowerCase() === label.toLowerCase());
-        if (same >= 0) list[same] = { ...item, id: list[same].id, quick: list[same].quick, shortcut: item.shortcut || list[same].shortcut }; else list = [item, ...list].slice(0, MAX);
-        list = clean(list); save(); form.hidden = true;
-        note(bar, tr('Saved “{0}”. Pick it under Templates on any other place.', label), 'ok');
+      const rows = el('div', 'ws-ptpl-rows');
+      const plans = places.map(place => plan(item, place, mode, picks));
+      const fields = FIELDS.filter(field => field in item);
+      let count = 0;
+      for (const field of fields) {
+        const own = plans.map(rowsOf => rowsOf.find(row => row.field === field)).filter(Boolean);
+        const first = own[0]; if (!first) continue;
+        const changing = own.filter(row => row.on).length, possible = own.filter(row => row.kind !== 'same' && row.kind !== 'locked').length;
+        const on = own.some(row => row.on);
+        if (on) count += places.length === 1 ? 1 : changing;
+        const kind = places.length === 1 ? first.kind : possible ? (own.some(row => row.kind === 'replace') ? 'replace' : 'new') : own.some(row => row.kind === 'locked') ? 'locked' : 'same';
+        const line = el('label', 'ws-ptpl-line'); line.dataset.kind = kind; line.dataset.on = String(on);
+        const box = el('input'); box.type = 'checkbox'; box.checked = on; box.disabled = kind === 'same' || kind === 'locked';
+        box.addEventListener('change', () => showPreview(bar, item, mode, { ...picks, [field]: box.checked }));
+        const words = el('span', 'ws-ptpl-line-words'), top = el('span', 'ws-ptpl-line-top');
+        const tag = { new: tr('New'), add: tr('Adds {0}', first.count || 0), replace: tr('Replaces'), locked: tr('Above your rank'), same: tr('Already so') }[kind];
+        top.append(el('b', '', first.label), el('small', 'ws-ptpl-tag', places.length > 1 && possible ? tr('{0} of {1}', possible, places.length) : tag));
+        words.append(top);
+        if (places.length === 1) {
+          const change = el('span', 'ws-ptpl-change');
+          const was = el('span', 'was', first.before || tr('Empty')); if (!first.before) was.dataset.empty = '';
+          const will = el('span', 'will', first.kind === 'add' ? `+ ${first.after}` : first.kind === 'same' ? first.before || first.after || tr('Empty') : first.after || tr('Empty'));
+          was.title = first.before; will.title = first.after;
+          if (kind !== 'same') { const arrow = el('span', 'arrow'); arrow.innerHTML = svg(ICON.arrow); change.append(was, arrow, will); } else change.append(will);
+          words.append(change);
+        } else words.append(el('span', 'ws-ptpl-change', first.kind === 'add' || field === 'services' || field === 'aliases' ? `+ ${item[field] && Array.isArray(item[field]) ? item[field].map(value => (field === 'services' ? serviceName(value) : fill(value, places[0]))).join(', ') : ''}` : String(field === 'openingHours' ? hoursText(item.openingHours) : field === 'categories' ? item.categories.map(categoryName).join(', ') : field === 'lockRank' ? tr('Level {0}', item.lockRank + 1) : PATTERNED.has(field) ? item[field] : item[field] || tr('Empty'))));
+        line.append(box, words); rows.append(line);
+      }
+      const foot = el('div', 'ws-ptpl-row end');
+      const cancel = button(tr('Cancel')), go = button(count === 0 ? tr('Nothing to change') : count === 1 ? tr('Apply 1 change') : tr('Apply {0} changes', count), ICON.check, 'primary');
+      go.disabled = count === 0;
+      cancel.addEventListener('click', () => showHome(bar));
+      go.addEventListener('click', async () => {
+        go.disabled = true;
+        const results = await applyTo(item, places.map(place => place.id), mode, picks);
+        showResults(bar, item, results);
       });
-      name.addEventListener('keydown', event => { event.stopPropagation(); if (event.key === 'Enter') { event.preventDefault(); keep.click(); } if (event.key === 'Escape') { event.preventDefault(); form.hidden = true; } });
-      row.append(cancel, keep);
-      form.append(name, shortLabel, fields, row); form.hidden = false;
+      foot.append(cancel, go);
+      view.append(head, modes, rows, foot);
+      go.focus({ preventScroll: true });
+    }
+    function showResults(bar, item, results) {
+      const view = bar.wsPanel; view.replaceChildren();
+      const [text, tone] = resultText(results, item.name);
+      const banner = el('div', 'ws-ptpl-banner'); banner.dataset.tone = tone; banner.innerHTML = svg(tone === 'err' ? ICON.warn : ICON.check); banner.append(el('span', '', text));
+      view.append(banner);
+      if (results.length > 1) {
+        const rows = el('div', 'ws-ptpl-results');
+        for (const result of results) {
+          const line = el('div', 'ws-ptpl-result'); line.dataset.state = result.error ? 'err' : result.nothing ? 'none' : 'ok';
+          const mark = el('span', 'mark'); mark.innerHTML = svg(result.error ? ICON.warn : result.nothing ? ICON.minus : ICON.check);
+          const words = el('span', 'words'); words.append(el('b', '', result.name || `#${result.id}`), el('small', '', result.error ? tr('Couldn’t change it: {0}', result.error) : result.nothing ? tr('Already has everything') : result.done === 1 ? tr('1 filled: {0}', result.fields.join(', ')) : tr('{0} filled: {1}', result.done, result.fields.join(', ').toLocaleLowerCase(uiLocale()))));
+          line.append(mark, words); rows.append(line);
+        }
+        view.append(rows);
+      }
+      const foot = el('div', 'ws-ptpl-row end');
+      const done = button(tr('Done'), '', 'primary');
+      done.addEventListener('click', () => showHome(bar));
+      if (results.some(result => result.done)) {
+        const back = button(results.length > 1 ? tr('Undo all') : tr('Undo'), ICON.undo);
+        back.addEventListener('click', async () => { back.disabled = true; const count = await undoLast(); showHome(bar); note(bar, count === 1 ? tr('Undone on this place.') : tr('Undone on {0} places.', count), 'ok'); });
+        foot.append(back);
+      }
+      foot.append(done); view.append(foot); done.focus({ preventScroll: true });
+    }
+    function showSave(bar) {
+      const ids = selected(), place = ids.length === 1 ? snapshot(ids[0]) : null; if (!place) return;
+      bar.wsView = 'save'; bar.wsMenu.hidden = true; note(bar, '');
+      const view = bar.wsPanel; view.replaceChildren(); view.hidden = false; bar.wsHome.hidden = true;
+      const one = place.venue, look = { color: 'blue' };
+      const head = el('div', 'ws-ptpl-head'); const title = el('div', 'ws-ptpl-head-words');
+      title.append(el('b', '', tr('Save as template')), el('small', '', tr('From {0}', one.name || tr('this place'))));
+      const close = button(null, ICON.x, 'ws-ptpl-icon'); close.setAttribute('aria-label', tr('Close')); close.addEventListener('click', () => showHome(bar));
+      head.append(title, close);
+      const top = el('div', 'ws-ptpl-two');
+      const nameBox = el('label', 'ws-ptpl-field'), name = el('input'); name.type = 'text'; name.maxLength = 50; name.value = one.brand || one.name || ''; name.placeholder = tr('Template name');
+      nameBox.append(el('span', '', tr('Template name')), name);
+      const labelBox = el('label', 'ws-ptpl-field short'), label = el('input'); label.type = 'text'; label.maxLength = 3; label.placeholder = tr('Auto');
+      labelBox.append(el('span', '', tr('Button')), label);
+      top.append(nameBox, labelBox);
+      const swatches = el('div', 'ws-ptpl-swatches'); swatches.setAttribute('role', 'radiogroup'); swatches.setAttribute('aria-label', tr('Colour'));
+      const paintSwatches = () => { for (const node of swatches.children) node.setAttribute('aria-checked', String(node.dataset.color === look.color)); label.style.setProperty('--h', HUES[look.color]); };
+      for (const key of Object.keys(HUES)) { const dot = el('button', 'ws-ptpl-swatch'); dot.type = 'button'; dot.dataset.color = key; dot.style.setProperty('--h', HUES[key]); dot.setAttribute('role', 'radio'); dot.setAttribute('aria-label', tr(key[0].toUpperCase() + key.slice(1))); dot.addEventListener('click', () => { look.color = key; paintSwatches(); }); swatches.append(dot); }
+      const pinRow = el('label', 'ws-ptpl-check'), pin = el('input'); pin.type = 'checkbox';
+      const free = list.filter(item => item.quick).length < QUICK; pin.checked = free; pin.disabled = !free;
+      pinRow.append(pin, el('span', '', free ? tr('Show it as a quick button') : tr('Quick buttons are full (5)')));
+      const looks = el('div', 'ws-ptpl-looks'); looks.append(swatches, pinRow);
+      const patternOf = text => { let out = String(text || ''); for (const key of ['street', 'city']) { const value = place.vars[key]; if (value && value.length > 2 && out.includes(value)) out = out.replace(value, `{${key}}`); } return out; };
+      const fields = el('div', 'ws-ptpl-fields'), checks = {}, inputs = {};
+      let focused = null;
+      const value = {
+        placeName: one.name ? patternOf(one.name) : '', aliases: (one.aliases || []).map(patternOf).join(', '), brand: one.brand || '', categories: (one.categories || []).map(String), url: one.url || '', phone: one.phone || '',
+        description: one.description ? patternOf(one.description) : '', openingHours: cleanHours(one.openingHours), services: (one.services || []).map(String), lockRank: Number(one.lockRank) || 0
+      };
+      const shown = { categories: value.categories.map(categoryName).join(', '), openingHours: value.openingHours.length ? hoursText(value.openingHours) : '', services: value.services.length ? (value.services.length === 1 ? serviceName(value.services[0]) : tr('{0} services', value.services.length)) : '', lockRank: tr('Level {0}', value.lockRank + 1), url: value.url, phone: value.phone, brand: value.brand };
+      const start = { placeName: false, aliases: false, brand: !!value.brand, categories: true, url: !!value.url, phone: false, description: false, openingHours: !!value.openingHours.length, services: !!value.services.length, lockRank: false };
+      for (const field of FIELDS) {
+        const has = Array.isArray(value[field]) ? value[field].length : field === 'lockRank' ? true : !!value[field];
+        if (!has && !PATTERNED.has(field)) continue;
+        const line = el('div', 'ws-ptpl-fline'), box = el('input'); box.type = 'checkbox'; box.checked = start[field]; box.id = `ws-ptpl-f-${field}-${uid()}`; checks[field] = box;
+        const name2 = el('label', 'ws-ptpl-fname', tr(LABEL[field])); name2.htmlFor = box.id;
+        line.append(box, name2);
+        if (PATTERNED.has(field)) {
+          const input = el('input', 'ws-ptpl-pattern'); input.type = 'text'; input.value = value[field]; input.maxLength = field === 'description' ? 500 : 240;
+          input.placeholder = field === 'aliases' ? tr('Separate them with commas') : field === 'placeName' ? '{brand} {street}' : '';
+          input.setAttribute('aria-label', tr(LABEL[field]));
+          input.addEventListener('focus', () => { focused = input; });
+          input.addEventListener('input', () => { box.checked = !!input.value.trim(); paintExample(); });
+          inputs[field] = input; line.append(input);
+        } else { const shownValue = el('span', 'ws-ptpl-fvalue', shown[field] || ''); shownValue.title = shown[field] || ''; line.append(shownValue); }
+        fields.append(line);
+      }
+      const varsRow = el('div', 'ws-ptpl-vars');
+      varsRow.append(el('span', '', tr('Insert')));
+      const VAR_LABEL = { name: 'name', street: 'street', number: 'number', city: 'city', brand: 'brand' };
+      for (const key of VARS) {
+        const add = button(`{${key}}`, '', 'ws-ptpl-var'); add.dataset.var = key; add.title = tr('Put the place’s {0} here', tr(VAR_LABEL[key]));
+        add.addEventListener('pointerdown', event => event.preventDefault());
+        add.addEventListener('click', () => {
+          const input = focused || inputs.placeName; if (!input) return;
+          const at = input.selectionStart ?? input.value.length, token = `{${key}}`;
+          input.setRangeText(token, at, input.selectionEnd ?? at, 'end'); input.dispatchEvent(new Event('input')); input.focus();
+        });
+        varsRow.append(add);
+      }
+      const example = el('p', 'ws-ptpl-example');
+      const paintExample = () => { const pattern = inputs.placeName?.value || ''; example.hidden = !/\{\w+\}/.test(pattern); if (!example.hidden) example.textContent = tr('Here the name becomes “{0}”.', fill(pattern, place)); };
+      const catId = String(one.categories?.[0] || ''), firstWord = (one.brand || one.name || '').trim().split(/\s+/)[0] || '';
+      const suggestBox = el('div', 'ws-ptpl-suggest-rule');
+      const suggestOn = el('input'); suggestOn.type = 'checkbox'; suggestOn.checked = !!(catId && firstWord); suggestOn.id = `ws-ptpl-s-${uid()}`;
+      const suggestLabel = el('label', '', catId ? tr('Suggest it on {0} places named', categoryName(catId)) : tr('Suggest it on places named')); suggestLabel.htmlFor = suggestOn.id;
+      const wordsInput = el('input', 'ws-ptpl-pattern'); wordsInput.type = 'text'; wordsInput.value = firstWord; wordsInput.placeholder = tr('Shell, Σελ'); wordsInput.setAttribute('aria-label', tr('Words in the name'));
+      wordsInput.addEventListener('input', () => { suggestOn.checked = !!wordsInput.value.trim(); });
+      const suggestTop = el('div', 'ws-ptpl-check'); suggestTop.append(suggestOn, suggestLabel);
+      suggestBox.append(suggestTop, wordsInput);
+      const foot = el('div', 'ws-ptpl-row end');
+      const cancel = button(tr('Cancel')), keep = button(tr('Save template'), ICON.check, 'primary');
+      cancel.addEventListener('click', () => showHome(bar));
+      keep.addEventListener('click', () => {
+        const title2 = name.value.replace(/\s+/g, ' ').trim();
+        if (!title2) { name.focus(); return; }
+        const picked = FIELDS.filter(field => checks[field]?.checked);
+        if (!picked.length) { note(bar, tr('Tick at least one thing to keep.'), 'err'); return; }
+        const item = { id: uid(), name: title2, shortcut: label.value, color: look.color, quick: pin.checked && !pin.disabled, created: Date.now(), match: { categories: suggestOn.checked && catId ? [catId] : [], words: suggestOn.checked ? wordsInput.value.split(',').map(word => word.trim()).filter(Boolean) : [] } };
+        for (const field of picked) {
+          if (field === 'aliases') item.aliases = inputs.aliases.value.split(',').map(alias => alias.trim()).filter(Boolean);
+          else if (PATTERNED.has(field)) item[field] = inputs[field].value.trim();
+          else item[field] = Array.isArray(value[field]) ? JSON.parse(JSON.stringify(value[field])) : value[field];
+        }
+        const same = list.findIndex(other => other.name.toLocaleLowerCase() === title2.toLocaleLowerCase());
+        if (same >= 0) { const old = list[same]; list[same] = { ...item, id: old.id, uses: old.uses, lastUsed: old.lastUsed, created: old.created || item.created, quick: item.quick || old.quick, folder: old.folder }; } else list = [item, ...list];
+        list = clean(list);
+        if (list.filter(one2 => one2.quick).length > QUICK) { let extra = list.filter(one2 => one2.quick).length - QUICK; for (const one2 of [...list].reverse()) if (extra > 0 && one2.quick && one2.name !== title2) { one2.quick = false; extra--; } }
+        save(); showHome(bar);
+        note(bar, tr('Saved “{0}”. It’s under Use a template on every place.', title2), 'ok');
+      });
+      foot.append(cancel, keep);
+      const fieldsHead = el('div', 'ws-ptpl-subhead', tr('What it fills in'));
+      view.append(head, top, looks, fieldsHead, fields, varsRow, example, suggestBox, foot);
+      paintSwatches(); paintExample();
       name.focus(); name.select();
+    }
+    function showHome(bar) {
+      bar.wsView = 'home'; bar.wsPanel.hidden = true; bar.wsPanel.replaceChildren(); bar.wsHome.hidden = false;
+      bar.wsSuggestKey = null; bar.wsQuickKey = null;
+      if (list) { paintQuick(bar); paintSuggest(bar); paintLast(bar); }
+    }
+    function paintLast(bar) {
+      const last = [...(list || [])].filter(item => item.lastUsed).sort((one, two) => two.lastUsed - one.lastUsed)[0];
+      bar.wsLast.hidden = !last;
+      if (last) bar.wsLast.textContent = tr('Last used: {0}, {1}', last.name, ago(last.lastUsed));
+    }
+    function ago(time) {
+      const minutes = Math.round((Date.now() - time) / 60000);
+      try {
+        const format = new Intl.RelativeTimeFormat(uiLocale(), { numeric: 'auto' });
+        if (minutes < 60) return format.format(-Math.max(0, minutes), 'minute');
+        if (minutes < 1440) return format.format(-Math.round(minutes / 60), 'hour');
+        return format.format(-Math.round(minutes / 1440), 'day');
+      } catch (_) { return ''; }
     }
     function build() {
       const bar = el('div', 'ws-ptpl'); bar.setAttribute('data-ws-keep', '');
+      const home = el('div', 'ws-ptpl-home');
+      const head = el('div', 'ws-ptpl-top');
       const title = el('span', 'ws-ptpl-title'); title.innerHTML = svg(ICON.tpl); title.append(el('span', '', tr('Templates')));
-      const pick = button(tr('Use a template'), ICON.chev), keep = button(tr('Save as template'), ICON.save);
-      const menu = el('div', 'ws-ptpl-menu'); menu.hidden = true;
-      const form = el('div', 'ws-ptpl-form'); form.hidden = true;
+      const manage = button(null, ICON.open, 'ws-ptpl-icon'); manage.title = tr('Manage templates in a new tab'); manage.setAttribute('aria-label', tr('Manage templates'));
+      manage.addEventListener('click', () => openManager(bar));
+      head.append(title, manage);
+      const suggest = el('div', 'ws-ptpl-suggest'); suggest.hidden = true;
       const quick = el('div', 'ws-ptpl-quick'); quick.hidden = true; quick.setAttribute('role', 'group'); quick.setAttribute('aria-label', tr('Quick templates'));
-      pick.addEventListener('click', event => { event.stopPropagation(); load().then(() => { paintMenu(bar, menu); menu.hidden = !menu.hidden; form.hidden = true; }); });
-      keep.addEventListener('click', () => { menu.hidden = true; load().then(() => openForm(bar, form)); });
-      document.addEventListener('pointerdown', event => { if (!menu.hidden && !event.composedPath().includes(bar)) menu.hidden = true; }, true);
-      for (const type of ['keydown', 'keyup', 'keypress']) bar.addEventListener(type, event => event.stopPropagation());
-      bar.append(title, pick, keep, quick, menu, form);
-      Object.assign(bar, { wsPick: pick, wsKeep: keep, wsTitle: title, wsQuick: quick });
-      load().then(() => { if (bar.isConnected) paintShortcuts(bar); });
+      const actions = el('div', 'ws-ptpl-row');
+      const pick = button(tr('Use a template'), ICON.chev, 'ws-ptpl-grow'), keep = button(tr('Save as template'), ICON.save, 'ws-ptpl-grow');
+      pick.setAttribute('aria-haspopup', 'true'); pick.setAttribute('aria-expanded', 'false');
+      const menu = el('div', 'ws-ptpl-menu'); menu.hidden = true;
+      pick.addEventListener('click', event => { event.stopPropagation(); load().then(() => { const open = menu.hidden; menu.hidden = !open; pick.setAttribute('aria-expanded', String(open)); if (open) paintMenu(bar, menu); }); });
+      keep.addEventListener('click', () => load().then(() => showSave(bar)));
+      actions.append(pick, keep);
+      const last = el('p', 'ws-ptpl-last'); last.hidden = true;
+      home.append(head, suggest, quick, actions, last);
+      const panel = el('div', 'ws-ptpl-panel'); panel.hidden = true;
+      document.addEventListener('pointerdown', event => { if (!menu.hidden && !event.composedPath().includes(bar)) { menu.hidden = true; pick.setAttribute('aria-expanded', 'false'); } }, true);
+      for (const type of ['keydown', 'keyup', 'keypress']) bar.addEventListener(type, event => {
+        if (type === 'keydown' && event.key === 'Escape') { if (!menu.hidden) { menu.hidden = true; pick.setAttribute('aria-expanded', 'false'); pick.focus(); } else if (bar.wsView !== 'home') showHome(bar); }
+        event.stopPropagation();
+      });
+      bar.append(home, menu, panel);
+      Object.assign(bar, { wsHome: home, wsPanel: panel, wsMenu: menu, wsPick: pick, wsKeep: keep, wsTitle: title, wsQuick: quick, wsSuggest: suggest, wsLast: last, wsView: 'home' });
+      load().then(() => { if (bar.isConnected) showHome(bar); });
       return bar;
     }
+    let shownFor = '';
     function sync() {
       frame = 0;
       const form = document.querySelector('#venue-edit-more-info form.attributes-form, #venue-edit-more-info form');
       let bar = document.querySelector('.ws-ptpl');
-      const ids = settings.enabled ? selected() : [];
-      if (!form || !ids.length) { bar?.remove(); return; }
+      const ids = settings.enabled && studioFeature('placeTemplates') ? selected() : [];
+      if (!form || !ids.length) { bar?.remove(); shownFor = ''; return; }
       if (!bar || bar.parentElement !== form) { bar?.remove(); bar = build(); form.prepend(bar); }
+      const key = ids.join(',');
+      if (shownFor && shownFor !== key && bar.wsView !== 'home') showHome(bar);
+      shownFor = key;
       bar.wsKeep.disabled = ids.length !== 1;
-      bar.wsKeep.title = ids.length === 1 ? tr('Keep this place’s website, phone, services and open hours as a template') : tr('Select one place to save it as a template');
+      bar.wsKeep.title = ids.length === 1 ? tr('Keep what this place has as a template') : tr('Select one place to save it as a template');
       const label = ids.length > 1 ? tr('Templates · {0} places', ids.length) : tr('Templates');
       const span = bar.wsTitle.querySelector('span'); if (span.textContent !== label) span.textContent = label;
-      if (list) paintShortcuts(bar);
+      if (list && bar.wsView === 'home') { paintQuick(bar); paintSuggest(bar); paintLast(bar); }
     }
     const queue = () => { if (!frame) frame = requestAnimationFrame(sync); };
+    document.addEventListener(STUDIO_FEATURES_EVENT, () => queue());
+    document.addEventListener('keydown', event => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !/^Digit[1-5]$/.test(event.code)) return;
+      const bar = document.querySelector('.ws-ptpl'); if (!bar?.isConnected || !list || !settings.enabled) return;
+      const typing = event.composedPath().some(node => node?.matches?.('input, textarea, [contenteditable="true"], wz-text-input, wz-textarea'));
+      if (typing && !event.composedPath().includes(bar)) return;
+      const item = list.filter(one => one.quick)[Number(event.code.slice(5)) - 1]; if (!item) return;
+      event.preventDefault(); event.stopPropagation();
+      quickApply(bar, item);
+    }, true);
+    const pages = new Map(), PAGE_KEY = 'wmeStudio.templatePages.v1';
+    let pageTokens = [];
+    const tokensReady = Promise.resolve(studioKeep.get(PAGE_KEY, [])).then(value => { const now = Date.now(); pageTokens = (Array.isArray(value) ? value : []).filter(item => item && /^[0-9a-f]{32}$/.test(item.t) && now - Number(item.at) < 30 * 86400000).slice(-10); }).catch(() => { pageTokens = []; });
+    function pageState() {
+      const ids = selected(), place = ids.length === 1 ? snapshot(ids[0]) : null;
+      const ui = uiLocale();
+      let brands = []; try { brands = [...new Set([...(sdk()?.DataModel?.Venues?.getGasStationBrands?.() || []), ...(sdk()?.DataModel?.Venues?.getParkingLotBrands?.() || []), ...(sdk()?.DataModel?.Venues?.getChargingStationBrands?.() || [])].map(String))].slice(0, 400); } catch (_) { brands = []; }
+      return {
+        list, limits: { max: MAX, quick: QUICK }, hues: HUES, rank: rank(), vars: VARS,
+        categories: [...categories()].map(([id, name]) => [id, name]).sort((one, two) => one[1].localeCompare(two[1], ui)),
+        services: Object.keys(SERVICES).map(id => [id, serviceName(id)]), brands,
+        place: place ? { id: place.id, name: place.venue.name || '', vars: place.vars, categories: (place.venue.categories || []).map(String) } : null,
+        selected: ids.length,
+        strings: Object.fromEntries((studioPart('TEMPLATES_STRINGS') || []).map(key => [key, tr(key)])),
+        theme: { scheme: activeTheme() === 'light' ? 'light' : 'dark', lang: ui },
+        fonts: pageFonts()
+      };
+    }
+    let fontsCache = null;
+    function pageFonts() { if (fontsCache == null) { const found = /const FONT_FILES = (\[\[[\s\S]*?\]\]);/.exec(studioPart('MANAGER_HTML') || ''); fontsCache = found ? found[1] : '[]'; } return fontsCache; }
+    function post(token, target, op, extra = {}) { try { target.postMessage({ wspt: token, op, ...extra }, location.origin); return true; } catch (_) { return false; } }
+    let fontsSent = new Set();
+    function postState(token, target, ack) {
+      const state = pageState();
+      if (fontsSent.has(token)) delete state.fonts; else fontsSent.add(token);
+      return post(token, target, 'state', { state, ack });
+    }
+    function notifyPages() { for (const [token, target] of pages) if (target && !target.closed) postState(token, target); else if (target?.closed) pages.delete(token); }
+    addEventListener('message', event => {
+      const message = event.data;
+      if (event.origin !== location.origin || !message || typeof message.wspt !== 'string' || !/^[0-9a-f]{32}$/.test(message.wspt)) return;
+      tokensReady.then(() => load()).then(() => {
+        if (!pages.has(message.wspt) && !pageTokens.some(item => item.t === message.wspt)) return;
+        pages.set(message.wspt, event.source);
+        if (message.op === 'hello') { if (message.fonts) fontsSent.delete(message.wspt); postState(message.wspt, event.source); return; }
+        if (message.op === 'save' && Array.isArray(message.list)) {
+          list = clean(message.list);
+          let quick = 0; for (const item of list) if (item.quick && ++quick > QUICK) item.quick = false;
+          try { Promise.resolve(studioKeep.set(KEY, list)).catch(error => reportStudioError('place templates save', error)); } catch (error) { reportStudioError('place templates save', error); }
+          const bar = document.querySelector('.ws-ptpl'); if (bar) { bar.wsQuickKey = null; bar.wsSuggestKey = null; }
+          queue();
+          for (const [token, target] of pages) if (target && !target.closed) postState(token, target, token === message.wspt ? message.id : undefined);
+          return;
+        }
+        if (message.op === 'preview') {
+          const ids = selected(), place = ids.length === 1 ? snapshot(ids[0]) : null, item = cleanOne(message.item);
+          const rows = place && item ? plan(item, place, message.mode === 'replace' ? 'replace' : 'fill').map(row => ({ field: row.field, label: row.label, before: row.before, after: row.after, kind: row.kind, on: row.on })) : null;
+          post(message.wspt, event.source, 'preview', { id: message.id, rows, place: place ? place.venue.name || '' : '' });
+        }
+      });
+    });
+    function openManager(bar) {
+      const nonce = [...document.querySelectorAll('script')].map(script => script.nonce).find(Boolean) || '';
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+      const html = studioPart('TEMPLATES_HTML');
+      if (!html) return false;
+      const url = URL.createObjectURL(new Blob([html.replace('__NONCE__', nonce)], { type: 'text/html' }));
+      pages.set(token, null);
+      tokensReady.then(() => { pageTokens = [...pageTokens.filter(item => item.t !== token), { t: token, at: Date.now() }].slice(-10); try { Promise.resolve(studioKeep.set(PAGE_KEY, pageTokens)).catch(() => {}); } catch (_) {   } });
+      let opened = null;
+      try { opened = window.open(`${url}#${token}`, '_blank'); } catch (_) { opened = null; }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if (!opened) { pages.delete(token); if (bar) note(bar, tr('Your browser blocked the new tab. Allow pop-ups for waze.com, then try again.'), 'err'); return false; }
+      return true;
+    }
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local' || !Object.hasOwn(changes, KEY) || !list) return;
+        list = clean(changes[KEY].newValue);
+        const bar = document.querySelector('.ws-ptpl'); if (bar) { bar.wsQuickKey = null; bar.wsSuggestKey = null; }
+        queue(); notifyPages();
+      });
+    } catch (_) {   }
     (function hook() {
       const api = sdk();
       if (!api) { setTimeout(hook, 1000); return; }
-      try { api.Events?.on?.({ eventName: 'wme-selection-changed', eventHandler: queue }); } catch (studioError) { reportStudioError('place templates', studioError); }
+      try { api.Events?.on?.({ eventName: 'wme-selection-changed', eventHandler: () => { notifyPages(); queue(); } }); } catch (studioError) { reportStudioError('place templates', studioError); }
+      try { api.Events?.on?.({ eventName: 'wme-data-model-objects-changed', eventHandler: event => { if (event?.dataModelName === 'venues') { const bar = document.querySelector('.ws-ptpl'); if (bar) bar.wsSuggestKey = null; queue(); } } }); } catch (_) {   }
       const watch = () => { const panel = document.querySelector('#edit-panel'); if (!panel) { setTimeout(watch, 1000); return; } new MutationObserver(records => { if (records.some(record => ![...record.addedNodes, ...record.removedNodes].every(node => node.nodeType === 1 && node.classList?.contains('ws-ptpl')) && !(record.target.closest?.('.ws-ptpl')))) queue(); }).observe(panel, { childList: true, subtree: true }); queue(); };
       watch();
     })();
-    return Object.freeze({ refresh: queue });
+    return Object.freeze({ refresh: queue, openManager: () => load().then(() => openManager(null)) });
   })();
   const closureColors = (() => {
     if (window.top !== window.self || editorProfile || standaloneSignin) return Object.freeze({ refresh() {} });
@@ -19955,6 +20468,15 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       queueStreetViewWindow();
     });
   }
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.repeat || event.ctrlKey || event.metaKey || event.altKey || !settings.enabled) return;
+    if (event.composedPath().some(node => node?.matches?.('input, textarea, select, [contenteditable="true"], wz-text-input, wz-textarea, dialog[open]'))) return;
+    const sdk = studioSDK.get();
+    let active = false; try { active = !!sdk?.StreetView?.isActive?.(); } catch (_) { active = false; }
+    if (!active) return;
+    try { sdk.StreetView.close(); } catch (studioError) { reportStudioError('streetViewEscape', studioError); return; }
+    event.preventDefault(); event.stopPropagation();
+  });
   function resizeStreetViewWindow(immediate = false) {
     const state = streetViewWindow;
     if (immediate || !state.drag || performance.now() - state.lastResize >= 80) {
@@ -22052,6 +22574,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       changed_at: text(data?.changed_at, 40)
     };
     remoteSwitch.state = state;
+    setStudioFeatures(data?.features);
     setDiscordInvite(state.discord.invite);
     globalThis.WMEStudioPushedUpdate = state.update;
     try { globalThis.WMEStudioUpdates?.push(state.update, state.update.pushed_at); } catch (studioError) { reportStudioError('update push', studioError); }
@@ -22624,8 +23147,30 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     }
     return '';
   }
-  const STUDIO_BUILD = '4.3.3-2026-10-31z123';
+  const STUDIO_BUILD = '4.3.4-2026-11-01z129';
   const STUDIO_CHANGELOG = Object.freeze([
+    { version: '4.3.4', groups: [
+      { title: 'Places', feature: 'placeTemplates', items: [
+        "Place templates do much more. Besides the website, phone, hours and services, a template can set the name, alternate names, brand, category, description and lock. Words in braces take each place’s own: “Shell {street}” becomes Shell Vouliagmenis.",
+        "A template can know which places it’s for. On a matching place that’s missing something it fills in, it comes up by itself with Review and apply.",
+        "Picking a template shows every field before and after, each with its own tick box. It fills empty fields only, unless you choose Replace too, and Undo takes it all back.",
+        "Quick buttons fill what’s empty in one click, and Alt+1 to Alt+5 press them from the keyboard.",
+        "With several places selected, a template goes on each one on its own, and you see what happened on every place.",
+        "Manage templates opens a page of its own: edit everything, sort templates into folders, pick their quick buttons, see what a template would do to the place selected in WME, and share templates with a code or a file."
+      ] },
+      { title: 'Quick replies', items: [
+        "More reply buttons than fit in the row? Arrows at its ends move along to the ones that are hidden."
+      ] },
+      { title: 'Map', items: [
+        "Escape closes Street View."
+      ] },
+      { title: 'Scripts', items: [
+        "WME UR Color Selector: the buttons, fields, lists and colour swatches in its tab look like Studio’s."
+      ] },
+      { title: 'Report a bug', items: [
+        "You can send MOV videos too, the way a Mac or an iPhone records the screen, in reports and in answers in My reports."
+      ] }
+    ] },
     { version: '4.3.2', groups: [
       { title: 'My reports', items: [
         "With Cloud Sync on, My reports shows the reports and ideas you sent from all your linked devices, and you can answer them from any of them."
@@ -23109,7 +23654,19 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     ] },
     { version: '1.0.0', items: ['First public release.'] }
   ]);
+  function studioChangelog() {
+    return STUDIO_CHANGELOG.map(entry => (entry.groups ? { ...entry, groups: entry.groups.filter(group => !group.feature || studioFeature(group.feature)) } : entry)).filter(entry => !entry.groups || entry.groups.length);
+  }
   const STUDIO_TESTS = Object.freeze({
+    "You can send MOV videos too, the way a Mac or an iPhone records the screen, in reports and in answers in My reports.": "Settings › Report a bug: attach a .mov screen recording (QuickTime on a Mac, or the iPhone’s screen recording). Its tag says MOV and its size; send it and open the report on the reports site: the video is there and plays (an iPhone HEVC one plays in Safari). Do the same with an answer in My reports.",
+    "WME UR Color Selector: the buttons, fields, lists and colour swatches in its tab look like Studio’s.": "Only with WME UR Color Selector installed: open Scripts › UR Colors on Dark, then Light. Its buttons, fields, lists and colour swatches should look like Studio’s, with the words centred. The colours you picked for each language stay as they are.",
+    "Escape closes Street View.": "Open Street View (drag its button onto a road, or right-click › Open Street View here), click the map once, then press Escape: Street View closes. Typing in a field and pressing Escape leaves it open.",
+    "More reply buttons than fit in the row? Arrows at its ends move along to the ones that are hidden.": "Make a request window narrow, or have many reply buttons (Quick replies › Manage › Show as a button), so the row doesn't fit. A round arrow shows on the right; each press brings the next hidden buttons in. Once moved, an arrow shows on the left too. On Light the arrows are white.",
+    "Place templates do much more. Besides the website, phone, hours and services, a template can set the name, alternate names, brand, category, description and lock. Words in braces take each place’s own: “Shell {street}” becomes Shell Vouliagmenis.": "Select a gas station you’ve filled in well, open More info and press Save as template: the name should read like Shell {street}, with the street in braces. Keep the ticks, save. A quick button with Alt 1 shows.",
+    "A template can know which places it’s for. On a matching place that’s missing something it fills in, it comes up by itself with Review and apply.": "Select another station of the same brand with an empty website: Looks like … should show above the buttons. Review and apply lists every field before and after; Apply, then Undo puts the place back as it was.",
+    "Picking a template shows every field before and after, each with its own tick box. It fills empty fields only, unless you choose Replace too, and Undo takes it all back.": "On a third place press Alt+1: what’s empty fills in at once and a note with Undo shows.",
+    "Quick buttons fill what’s empty in one click, and Alt+1 to Alt+5 press them from the keyboard.": "Select three places, one outside your area: Use a template › the template. The preview says one is left out; after Apply each place has its own line.",
+    "With several places selected, a template goes on each one on its own, and you see what happened on every place.": "Press the open-in-new-tab icon next to Templates: a page opens with your templates. Change the name, a field and the quick button; the panel in WME follows. With one place selected in WME, the right side shows what the template does to it. Share › Copy code, then Import and paste it: it asks before replacing.",
     "Reset colours in Settings › Map puts the road closure colours back to red, orange and blue again.": "In Settings › Map, change one of the closure colours (type #00ff00 for Active, say), then press Reset colours: all three should go back to red, orange and blue, the swatches and the codes, and stay that way after a reload.",
     "WME UT Kadastrs: the buttons, field and checkboxes in its tab look like Studio’s.": "Only with WME UT Kadastrs installed: open Scripts › WME UT Kadastrs on Dark, then Light. Evil Mode and Undo should look like Studio’s buttons with the words centred (Undo faded while it can’t be used), the Venue Area Size field like Studio’s fields, and the checkboxes in your accent.",
     "WME Route Checker and WME Omnisearch follow Studio’s theme. In Floating mode, Omnisearch’s search window no longer opens under the header, so you can drag it.": "Only with WME Route Checker or WME Omnisearch installed. Route Checker: select two segments and open its Routes tab on Dark, then Light: the turns should read as text, street names in your accent, and a turn it marks in red should stay red. Omnisearch: press Ctrl+K in Floating mode with the header at the top: the window should show above the header, and dragging it by its top should move it. Its colours and its Scripts tab should follow your theme and accent.",
@@ -23289,7 +23846,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     if (setupSeen === false) { markChangelogSeen(); markMobileNewsSeen(); return; }
     const seenVersion = String(seen || '').split('-')[0], parts = v => String(v).split('.').map(n => parseInt(n, 10) || 0);
     const newer = v => { const a = parts(v), b = parts(seenVersion); for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); return false; };
-    const unseen = seenVersion ? STUDIO_CHANGELOG.filter(entry => newer(entry.version)) : [];
+    const unseen = seenVersion ? studioChangelog().filter(entry => newer(entry.version)) : [];
     if (seenVersion && unseen.every(entry => entry.quiet)) { markChangelogSeen(); return; }
     await new Promise(ok => { const go = () => setTimeout(ok, 3500); if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true }); });
     if (document.visibilityState !== 'visible') await new Promise(ok => document.addEventListener('visibilitychange', function shown() { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', shown); ok(); } }));
@@ -24600,7 +25157,8 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       clearScreenshot();
     }
     const BUG_IMAGES_MAX = 4, BUG_VIDEO_MAX = 25 * 1024 * 1024;
-    const isBugVideo = file => Boolean(file) && (file.type === 'video/mp4' || (!file.type && /\.mp4$/i.test(file.name || '')));
+    const isBugVideo = file => Boolean(file) && (file.type === 'video/mp4' || file.type === 'video/quicktime' || (!/^video\//.test(file.type || '') && /\.(?:mp4|mov)$/i.test(file.name || '')));
+    const isMov = file => file?.type === 'video/quicktime' || /\.mov$/i.test(file?.name || '');
     function previewBugScreenshot(shot, opener) {
       bug.previewClose?.();
       if (!shadow.querySelector('style[data-mine-media]')) {
@@ -24630,7 +25188,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         const video = document.createElement('video'); video.muted = true; video.playsInline = true; video.preload = 'metadata';
         video.onerror = () => video.remove();
         if (bug.clipUrl) video.src = bug.clipUrl;
-        const tag = document.createElement('span'); tag.className = 'bug-thumb-tag'; tag.textContent = `MP4 · ${(bug.clip.size / 1048576).toFixed(1)} MB`;
+        const tag = document.createElement('span'); tag.className = 'bug-thumb-tag'; tag.textContent = `${isMov(bug.clip) ? 'MOV' : 'MP4'} · ${(bug.clip.size / 1048576).toFixed(1)} MB`;
         figure.append(video, tag, remove(translate('Remove'), () => { clearVideo(); renderAttachments(); }));
         nodes.push(figure);
       }
@@ -24640,7 +25198,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const parts = [];
       if (bug.shots.length) parts.push(`${translate('Images')} ${bug.shots.length}/${BUG_IMAGES_MAX}`);
       if (bug.clip) parts.push(translate('Video'));
-      bug.shotName.textContent = parts.length ? parts.join(' · ') : translate('Optional: up to 4 images and 1 MP4 video. You can also paste or drop them here.');
+      bug.shotName.textContent = parts.length ? parts.join(' · ') : translate('Optional: up to 4 images and 1 video (MP4 or MOV). You can also paste or drop them here.');
     }
     function clearVideo() {
       bug.clip = null;
@@ -24653,7 +25211,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       renderAttachments();
     }
     function loadVideo(file) {
-      if (file.size > BUG_VIDEO_MAX) { showBugError(translate('Videos must be MP4 files of up to 25 MB.')); return; }
+      if (file.size > BUG_VIDEO_MAX) { showBugError(translate('Videos must be MP4 or MOV files of up to 25 MB.')); return; }
       clearVideo();
       bug.clip = file;
       try { bug.clipUrl = URL.createObjectURL(file); } catch (_) { bug.clipUrl = ''; }
@@ -24682,7 +25240,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       showBugError('');
       for (const file of list) {
         if (isBugVideo(file)) { loadVideo(file); continue; }
-        if (/^video\//.test(file.type)) { showBugError(translate('Videos must be MP4 files of up to 25 MB.')); continue; }
+        if (/^video\//.test(file.type)) { showBugError(translate('Videos must be MP4 or MOV files of up to 25 MB.')); continue; }
         if (!/^image\//.test(file.type)) continue;
         if (bug.shots.length + bug.pending >= BUG_IMAGES_MAX) { refused = true; continue; }
         bug.pending += 1;
@@ -24727,7 +25285,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
           if (status >= 200 && status < 300 && data?.ok) resolve(data);
           else reject(new Error(data?.error || (status ? `${translate('The server answered')} ${status}` : translate('No answer from the server'))));
         };
-        const headers = { 'Content-Type': 'video/mp4', 'X-File-Name': encodeURIComponent(file.name || 'video.mp4') };
+        const headers = { 'Content-Type': isMov(file) ? 'video/quicktime' : 'video/mp4', 'X-File-Name': encodeURIComponent(file.name || (isMov(file) ? 'video.mov' : 'video.mp4')) };
         if (key) Object.assign(headers, { 'X-Reporter-Token': key }, reporterKeysHeader());
         if (typeof GM_xmlhttpRequest === 'function') {
           GM_xmlhttpRequest({ method: 'POST', url, data: file, headers, timeout: limit, anonymous: true,
@@ -25236,7 +25794,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'reset'; cancel.textContent = translate('Cancel');
       const error = document.createElement('span'); error.className = 'mine-reply-error';
       const attach = document.createElement('button'); attach.type = 'button'; attach.className = 'reset mine-attach'; attach.textContent = translate('Add images or a video');
-      const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*,video/mp4,.mp4'; picker.multiple = true; picker.hidden = true;
+      const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*,video/mp4,video/quicktime,.mp4,.mov'; picker.multiple = true; picker.hidden = true;
       const chosen = document.createElement('div'); chosen.className = 'mine-media-row'; chosen.hidden = true;
       const files = { images: [], clip: null };
       const paintChosen = () => {
@@ -25254,8 +25812,8 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const take = async list => {
         error.textContent = '';
         for (const file of [...(list || [])]) {
-          if (isBugVideo(file)) { if (file.size > BUG_VIDEO_MAX) error.textContent = translate('Videos must be MP4 files of up to 25 MB.'); else files.clip = file; continue; }
-          if (/^video\//.test(file.type)) { error.textContent = translate('Videos must be MP4 files of up to 25 MB.'); continue; }
+          if (isBugVideo(file)) { if (file.size > BUG_VIDEO_MAX) error.textContent = translate('Videos must be MP4 or MOV files of up to 25 MB.'); else files.clip = file; continue; }
+          if (/^video\//.test(file.type)) { error.textContent = translate('Videos must be MP4 or MOV files of up to 25 MB.'); continue; }
           if (!/^image\//.test(file.type) || files.images.length >= BUG_IMAGES_MAX) continue;
           try { files.images.push(await shrinkImage(file)); } catch (_) { error.textContent = translate('Could not load it'); }
         }
@@ -25371,10 +25929,10 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     const logCount = release => logGroups(release).reduce((sum, group) => sum + group.items.length, 0);
     const logChanges = count => count === 1 ? logT('1 change') : logT('{0} changes', count);
     function paintChangelog(focusRail = false) {
-      const release = STUDIO_CHANGELOG.find(entry => entry.version === log.pick.version) || STUDIO_CHANGELOG[0];
-      const current = STUDIO_CHANGELOG[0].version === USERSCRIPT_VERSION ? STUDIO_CHANGELOG[0].version : '';
+      const release = studioChangelog().find(entry => entry.version === log.pick.version) || studioChangelog()[0];
+      const current = studioChangelog()[0].version === USERSCRIPT_VERSION ? studioChangelog()[0].version : '';
       const rail = [logEl('h6', '', logT('Versions'))];
-      for (const entry of STUDIO_CHANGELOG) {
+      for (const entry of studioChangelog()) {
         const button = logEl('button', 'log-ver'); button.type = 'button'; button.setAttribute('role', 'tab');
         const chosen = entry.version === release.version;
         button.setAttribute('aria-selected', String(chosen)); button.tabIndex = chosen ? 0 : -1; button.dataset.version = entry.version;
@@ -25431,7 +25989,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       const keys = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
       if (!(event.key in keys) && event.key !== 'Home' && event.key !== 'End') return;
       event.preventDefault();
-      const versions = STUDIO_CHANGELOG.map(entry => entry.version), at = versions.indexOf(log.pick.version);
+      const versions = studioChangelog().map(entry => entry.version), at = versions.indexOf(log.pick.version);
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? versions.length - 1 : Math.max(0, Math.min(versions.length - 1, at + keys[event.key]));
       if (next !== at) { log.pick = { version: versions[next], group: '' }; paintChangelog(true); }
     }
@@ -25448,7 +26006,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       if (!event.ctrlKey && !event.metaKey) event.stopImmediatePropagation();
     }
     function showRelease() {
-      const extra = STUDIO_CHANGELOG.filter(entry => /^4\.0\.\d+$/.test(entry.version) && entry.version !== '4.0.0' && versionAtMost(entry.version, USERSCRIPT_VERSION));
+      const extra = studioChangelog().filter(entry => /^4\.0\.\d+$/.test(entry.version) && entry.version !== '4.0.0' && versionAtMost(entry.version, USERSCRIPT_VERSION));
       const more = q('[data-id="release-more"]');
       more.hidden = !extra.length;
       if (extra.length) {
@@ -25479,8 +26037,8 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     function showChangelog(mode = 'new', since = '') {
       if (mode === 'new' && /^4\.0\./.test(USERSCRIPT_VERSION) && (!since || (/^\d+(?:\.\d+)+$/.test(since) && !versionAtMost(USERSCRIPT_VERSION, since)))) { log.box.hidden = true; showRelease(); return; }
       if (mode === 'new') {
-        const fresh = /^\d+(?:\.\d+)+$/.test(since) ? STUDIO_CHANGELOG.filter(entry => !versionAtMost(entry.version, since)).slice(0, 4) : [];
-        const releases = fresh.length ? fresh : [STUDIO_CHANGELOG[0]];
+        const fresh = /^\d+(?:\.\d+)+$/.test(since) ? studioChangelog().filter(entry => !versionAtMost(entry.version, since)).slice(0, 4) : [];
+        const releases = fresh.length ? fresh : [studioChangelog()[0]];
         log.version.textContent = `WME Studio ${USERSCRIPT_VERSION}`;
         log.list.replaceChildren(...releases.flatMap(release => releases.length > 1
           ? [Object.assign(document.createElement('h4'), { className: 'log-version', textContent: release.version }), ...changelogRelease(release)]
@@ -25490,7 +26048,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         return;
       }
       log.box.hidden = true;
-      log.pick = { version: STUDIO_CHANGELOG[0].version, group: '' };
+      log.pick = { version: studioChangelog()[0].version, group: '' };
       log.shown = '';
       paintChangelog();
       log.opener = shadow.activeElement;
@@ -25668,7 +26226,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     bug.file.addEventListener('change', () => loadScreenshot(bug.file.files));
     bug.shotClear.addEventListener('click', clearScreenshot);
     bug.form.addEventListener('paste', event => {
-      const files = [...(event.clipboardData?.items || [])].filter(entry => entry.kind === 'file' && (entry.type.startsWith('image/') || entry.type === 'video/mp4')).map(entry => entry.getAsFile()).filter(Boolean);
+      const files = [...(event.clipboardData?.items || [])].filter(entry => entry.kind === 'file' && (entry.type.startsWith('image/') || entry.type === 'video/mp4' || entry.type === 'video/quicktime')).map(entry => entry.getAsFile()).filter(Boolean);
       if (files.length) { event.preventDefault(); loadScreenshot(files); }
     });
     bug.form.addEventListener('dragover', event => { event.preventDefault(); });
