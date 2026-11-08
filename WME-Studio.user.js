@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.4
+// @version      4.3.5
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -45,7 +45,7 @@
 // @grant        GM.listValues
 // @grant        GM.xmlHttpRequest
 // @connect      update.greasyfork.org
-// @connect      workers.dev
+// @connect      wme-studio.com
 // @downloadURL https://update.greasyfork.org/scripts/599569/WME%20Studio.user.js
 // @updateURL https://update.greasyfork.org/scripts/599569/WME%20Studio.meta.js
 // ==/UserScript==
@@ -75,7 +75,7 @@ function wmeStudioBridgeNote(text, bad) {
   } catch (_) {   }
 }
 
-const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.4-2026-11-01z129', cloudSync: '4.3.0-2026-10-29' };
+const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.5-2026-11-08z130', cloudSync: '4.3.0-2026-10-29' };
 function wmeStudioCompareLibraryBuild(loaded, wanted) {
   if (loaded === wanted) return 0;
   const parse = value => {
@@ -103,7 +103,7 @@ function wmeStudioStartBridge(main) {
   const resourcesCode = globalThis.WMEStudioResourcesCode, screenDisplaysCode = globalThis.WMEStudioScreenDisplaysCode, interfaceCode = globalThis.WMEStudioInterfaceCode, cloudSyncCode = globalThis.WMEStudioCloudSyncCode;
   if (typeof resourcesCode !== 'function') say('the userscript manager has no Resources library: Studio asks Greasy Fork for it');
   if (typeof interfaceCode !== 'function') say('the userscript manager has no Interface library: Studio asks Greasy Fork for it');
-  const ALLOWED = /^https:\/\/(?:update\.greasyfork\.org|greasyfork\.org|wme-studio-reports\.charalamposavgenikos\.workers\.dev)\//i;
+  const ALLOWED = /^https:\/\/(?:update\.greasyfork\.org|greasyfork\.org|wme-studio\.com)\//i;
 
   const requests = new Map();
   const answer = (id, kind, response) => window.postMessage({ wsBridge: token, from: 'content', op: 'xhr', id, kind, response }, '*');
@@ -433,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.4';
+  const USERSCRIPT_VERSION = '4.3.5';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -451,7 +451,7 @@ const wmeStudioMain = () => {
     } catch (_) {   }
     return null;
   })();
-  const BUG_REPORT_ENDPOINT = 'https://wme-studio-reports.charalamposavgenikos.workers.dev';
+  const BUG_REPORT_ENDPOINT = 'https://wme-studio.com';
   const BUG_REPORT_FALLBACK_URL = 'https://greasyfork.org/scripts/599569/feedback';
   const QR_PAGE_KEY = 'wmeStudio.qrPage.v1';
   function qrPageKept() {
@@ -23147,8 +23147,13 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     }
     return '';
   }
-  const STUDIO_BUILD = '4.3.4-2026-11-01z129';
+  const STUDIO_BUILD = '4.3.5-2026-11-08z130';
   const STUDIO_CHANGELOG = Object.freeze([
+    { version: '4.3.5', groups: [
+      { title: 'Studio', items: [
+        "Studio reaches my site at its own address, wme-studio.com, now. Some networks and ad blockers turn away the old workers.dev address, and there bug reports, Discord verification and Cloud Sync said the server couldn’t be reached."
+      ] }
+    ] },
     { version: '4.3.4', groups: [
       { title: 'Places', feature: 'placeTemplates', items: [
         "Place templates do much more. Besides the website, phone, hours and services, a template can set the name, alternate names, brand, category, description and lock. Words in braces take each place’s own: “Shell {street}” becomes Shell Vouliagmenis.",
@@ -23658,6 +23663,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     return STUDIO_CHANGELOG.map(entry => (entry.groups ? { ...entry, groups: entry.groups.filter(group => !group.feature || studioFeature(group.feature)) } : entry)).filter(entry => !entry.groups || entry.groups.length);
   }
   const STUDIO_TESTS = Object.freeze({
+    "Studio reaches my site at its own address, wme-studio.com, now. Some networks and ad blockers turn away the old workers.dev address, and there bug reports, Discord verification and Cloud Sync said the server couldn’t be reached.": "Open Settings › Report a bug and send a short test report: it goes through. Verify on the WME Studio Discord from Studio too. On a network that blocked it before, both now work.",
     "You can send MOV videos too, the way a Mac or an iPhone records the screen, in reports and in answers in My reports.": "Settings › Report a bug: attach a .mov screen recording (QuickTime on a Mac, or the iPhone’s screen recording). Its tag says MOV and its size; send it and open the report on the reports site: the video is there and plays (an iPhone HEVC one plays in Safari). Do the same with an answer in My reports.",
     "WME UR Color Selector: the buttons, fields, lists and colour swatches in its tab look like Studio’s.": "Only with WME UR Color Selector installed: open Scripts › UR Colors on Dark, then Light. Its buttons, fields, lists and colour swatches should look like Studio’s, with the words centred. The colours you picked for each language stay as they are.",
     "Escape closes Street View.": "Open Street View (drag its button onto a road, or right-click › Open Street View here), click the map once, then press Escape: Street View closes. Typing in a field and pressing Escape leaves it open.",
