@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.5
+// @version      4.3.6
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -75,7 +75,7 @@ function wmeStudioBridgeNote(text, bad) {
   } catch (_) {   }
 }
 
-const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.5-2026-11-08z130', cloudSync: '4.3.0-2026-10-29' };
+const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.6-2026-11-17z131', cloudSync: '4.3.0-2026-10-29' };
 function wmeStudioCompareLibraryBuild(loaded, wanted) {
   if (loaded === wanted) return 0;
   const parse = value => {
@@ -433,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.5';
+  const USERSCRIPT_VERSION = '4.3.6';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -982,7 +982,7 @@ ${selector}:disabled { opacity: .42; cursor: not-allowed; }
     'wmeStudio.workspaceProfiles.v1','wmeStudio.scriptTabPins.v1','wmeStudio.panelSizes.v1','wmeStudio.chatPanelOffset.v3','wmeStudio.streetViewWindow.v1',
     'wmeStudio.enabled','wmeStudio.theme','wmeStudio.corners','wmeStudio.accent',
     'wmeStudio.addons','wmeStudio.motion','wmeStudio.compactMode','wmeStudio.closureColors','wmeStudio.closureActiveColor','wmeStudio.closureUpcomingColor','wmeStudio.closureEndedColor','wmeStudio.closureShowActive','wmeStudio.closureShowUpcoming','wmeStudio.closureShowEnded','wmeStudio.closureFilterPinned','wmeStudio.scriptTabNames','wmeStudio.compactHeaderFullWidth','wmeStudio.compactHeaderWidth','wmeStudio.compactIslandOpacity','wmeStudio.islandFill','wmeStudio.islandColor','wmeStudio.islandColor2','wmeStudio.islandAngle','wmeStudio.islandIntensity','wmeStudio.taskStyle','wmeStudio.compactSnapEdges','wmeStudio.compactSnapCenter','wmeStudio.compactIslandLayout.v1','wmeStudio.layerColumns','wmeStudio.eyeSaver','wmeStudio.satelliteBrightness','wmeStudio.viewportOverlay','wmeStudio.viewportBrightness','wmeStudio.gpsBelowRoads','wmeStudio.gpsOpacity','wmeStudio.discussionVisible','wmeStudio.replyLines','wmeStudio.halloweenDay','wmeStudio.halloweenAsked','wmeStudio.halloweenExtras','wmeStudio.halloweenPumpkins','wmeStudio.halloweenFog','wmeStudio.halloweenAuto','wmeStudio.clockFormat','wmeStudio.compactRequests','wmeStudio.commandShortcut',
-    'wmeStudio.themeSchedule','wmeStudio.themeNight','wmeStudio.themeDayStart','wmeStudio.themeNightStart','wmeStudio.eyeSaverSchedule','wmeStudio.eyeSaverStart','wmeStudio.eyeSaverEnd','wmeStudio.eyeSaverFade','wmeStudio.customScrollbars','wmeStudio.showTooltips','wmeStudio.contextMenu','wmeStudio.showZoomLevel','wmeStudio.zoomScaleAlways','wmeStudio.createMenuClick','wmeStudio.searchWidth','wmeStudio.closeAfterReply','wmeStudio.requestCaseFile','wmeStudio.requestQuietDays','wmeStudio.requestNextInTracker','wmeStudio.urceHandoff','wmeStudio.screenDisplays','wmeStudio.screenLongPress','wmeStudio.screenRoadButton','wmeStudio.screenShapeButton','wmeStudio.screenDrawButton','wmeStudio.islandControls.v1','wmeStudio.reporterKeys.v1'
+    'wmeStudio.themeSchedule','wmeStudio.themeNight','wmeStudio.themeDayStart','wmeStudio.themeNightStart','wmeStudio.eyeSaverSchedule','wmeStudio.eyeSaverStart','wmeStudio.eyeSaverEnd','wmeStudio.eyeSaverFade','wmeStudio.customScrollbars','wmeStudio.showTooltips','wmeStudio.contextMenu','wmeStudio.rightClickMenu','wmeStudio.showZoomLevel','wmeStudio.zoomScaleAlways','wmeStudio.createMenuClick','wmeStudio.searchWidth','wmeStudio.closeAfterReply','wmeStudio.requestCaseFile','wmeStudio.requestQuietDays','wmeStudio.requestNextInTracker','wmeStudio.urceHandoff','wmeStudio.screenDisplays','wmeStudio.screenLongPress','wmeStudio.screenRoadButton','wmeStudio.screenShapeButton','wmeStudio.screenDrawButton','wmeStudio.islandControls.v1','wmeStudio.reporterKeys.v1'
   ];
   const emitStorage = changes => {
     if (!Object.keys(changes).length) return;
@@ -1407,7 +1407,7 @@ ${STUDIO_DARK} select option:disabled { color: var(--wme-studio-text-muted); }
     replyLines: 4, language: 'auto', commandShortcut: 'Shift+KeyP',
     themeSchedule: 'off', themeNight: 'dark', themeDayStart: '07:00', themeNightStart: '20:00',
     eyeSaverSchedule: 'off', eyeSaverStart: '21:00', eyeSaverEnd: '07:00', eyeSaverFade: true,
-    customScrollbars: true, showTooltips: false, contextMenu: true,
+    customScrollbars: true, showTooltips: false, contextMenu: true, rightClickMenu: 'studio',
     showZoomLevel: true,
     zoomScaleAlways: false,
     createMenuClick: false, searchWidth: 0,
@@ -1443,7 +1443,7 @@ ${STUDIO_DARK} select option:disabled { color: var(--wme-studio-text-muted); }
     return value.split('+').map(part => names[part] || part.replace(/^(?:Key|Digit)/, '').replace(/^Numpad/, 'Num ')).join(' + ');
   }
   globalThis.WMEStudioShortcut = { normalize: normalizeShortcut, fromEvent: shortcutFromEvent, label: shortcutLabel, recording: false };
-  const choices = { clockFormat: ['auto', '12', '24'], taskStyle: ['classic', 'edge', 'dot', 'fade'], islandFill: ['theme', 'color', 'gradient'], islandAngle: ['90', '135', '180', '225'], theme: ['light', 'dark', 'black'], themeNight: ['dark', 'black'], themeSchedule: ['off', 'sun', 'custom'], eyeSaverSchedule: ['off', 'sun', 'custom'], corners: ['flat', 'soft'], layerColumns: ['one', 'two'], language: ['auto','en','el','es','pt','fr','de','it','nl','pl','ru','tr','ka'] };
+  const choices = { rightClickMenu: ['native', 'studio', 'rcf'], clockFormat: ['auto', '12', '24'], taskStyle: ['classic', 'edge', 'dot', 'fade'], islandFill: ['theme', 'color', 'gradient'], islandAngle: ['90', '135', '180', '225'], theme: ['light', 'dark', 'black'], themeNight: ['dark', 'black'], themeSchedule: ['off', 'sun', 'custom'], eyeSaverSchedule: ['off', 'sun', 'custom'], corners: ['flat', 'soft'], layerColumns: ['one', 'two'], language: ['auto','en','el','es','pt','fr','de','it','nl','pl','ru','tr','ka'] };
   const ranges = { requestQuietDays: [1, 30], compactHeaderWidth: [0, 100], compactIslandOpacity: [20, 100], islandIntensity: [20, 100], eyeSaver: [0, 100], satelliteBrightness: [0, 100], viewportBrightness: [0, 100], gpsOpacity: [0, 100], hudScale: [70, 100], panelScale: [70, 100], fontScale: [85, 120], discussionVisible: [1, 10], replyLines: [2, 20], searchWidth: [0, 900] };
   const steps = { compactHeaderWidth: 1, discussionVisible: 1, replyLines: 1, searchWidth: 1, requestQuietDays: 1 };
   const clockTimes = new Set(['themeDayStart', 'themeNightStart', 'eyeSaverStart', 'eyeSaverEnd']);
@@ -1465,6 +1465,9 @@ ${STUDIO_DARK} select option:disabled { color: var(--wme-studio-text-muted); }
       else if (key === 'halloweenDay' || key === 'halloweenAsked') out[key] = value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? value : fallback;
       else out[key] = typeof value === 'boolean' ? value : fallback;
     }
+    // 4.3.6: which menu a right-click on the map opens. Before, a switch turned Studio's on or off; off is WME's own.
+    if (!choices.rightClickMenu.includes(input.rightClickMenu) && input.contextMenu === false) out.rightClickMenu = 'native';
+    out.contextMenu = out.rightClickMenu === 'studio';
     return out;
   }
 
@@ -22703,6 +22706,54 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
       });
     } catch (studioError) { reportStudioError('Cloud Sync', studioError); }
   }
+  // 4.3.6: the editor's address keeps its language. WME draws its side menu (Edit, Issues, Events…) from the address,
+  // and one without the language (/editor/ for /en-US/editor/) leaves the menu empty and the left island gone. WME
+  // Permalink Updater rewrites the address that way every second. A rewrite that drops the language gets the one WME
+  // opened with back, before WME's router sees it, and an address that already lost it gets it back. WME wraps the
+  // address calls after Studio does, so Studio's wrapper is put back on the outside whenever something wrapped them since.
+  if (!standaloneSignin && !editorProfile && window.top === window.self) {
+    const LOCALE_PATH = /^\/([A-Za-z]{2}(?:-[A-Za-z]{2,4})?)\/editor(?=\/|$)/;
+    const startLocale = LOCALE_PATH.exec(location.pathname)?.[1] || '';
+    const keepEditorLocale = () => {
+      try {
+        const page = typeof unsafeWindow === 'undefined' ? window : unsafeWindow, history = page.history, marker = '__wmeStudioKeepsLocale';
+        for (const name of ['replaceState', 'pushState']) {
+          const original = history[name];
+          if (typeof original !== 'function' || original[marker]) continue;
+          const wrapped = function (state, title, url) {
+            try {
+              const locale = LOCALE_PATH.exec(page.location.pathname)?.[1] || startLocale;
+              if (locale && url != null) {
+                const next = new URL(String(url), page.location.href);
+                if (next.origin === page.location.origin && /^\/editor(?=\/|$)/.test(next.pathname)) url = `/${locale}${next.pathname}${next.search}${next.hash}`;
+              }
+            } catch (_) { /* the address as it was asked for */ }
+            // WME keeps the open side panel in the address too (tab=prefs, tab=feature_editor) and closes it when an
+            // address without it comes in. A rewrite made by another script keeps WME's tab; WME's own go through.
+            try {
+              if (url != null) {
+                const now = new URL(page.location.href), next = new URL(String(url), page.location.href);
+                const tab = now.searchParams.get('tab');
+                if (tab && !next.searchParams.has('tab') && next.origin === now.origin && /\/editor(?=\/|$)/.test(next.pathname)) {
+                  const frames = String(new Error().stack || '').split('\n').slice(2, 8).join('\n');
+                  if (!/waze\.com\//.test(frames)) { next.searchParams.set('tab', tab); url = `${next.pathname}${next.search}${next.hash}`; }
+                }
+              }
+            } catch (_) { /* the address as it was asked for */ }
+            return original.call(this, state, title, url);
+          };
+          const shared = typeof exportFunction === 'function' ? exportFunction(wrapped, page) : wrapped;
+          try { Object.defineProperty(shared, marker, { value: true }); } catch (_) { /* marked or not, wrapping twice is harmless */ }
+          history[name] = shared;
+        }
+        // Already lost (rewritten before Studio's wrapper was on): put back, through WME's router, so its menu comes back.
+        if (startLocale && /^\/editor(?=\/|$)/.test(page.location.pathname)) history.replaceState(history.state, '', `/${startLocale}${page.location.pathname}${page.location.search}${page.location.hash}`);
+      } catch (studioError) { reportStudioError('keep editor locale', studioError); }
+    };
+    keepEditorLocale();
+    for (const delay of [500, 1500, 3000, 8000, 20000]) setTimeout(keepEditorLocale, delay);
+    setInterval(keepEditorLocale, 15000);
+  }
   (function watchLoading() {
     if (standaloneSignin || editorProfile) return;
     const started = performance.now();
@@ -23147,8 +23198,16 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     }
     return '';
   }
-  const STUDIO_BUILD = '4.3.5-2026-11-08z130';
+  const STUDIO_BUILD = '4.3.6-2026-11-17z131';
   const STUDIO_CHANGELOG = Object.freeze([
+    { version: '4.3.6', groups: [
+      { title: 'Studio', items: [
+        "With WME Permalink Updater installed, WME’s side menu (Edit, Issues, Events…) and the left island stay. The script took the language out of the editor’s address (/editor/ for /en-US/editor/), and WME then emptied the menu."
+      ] },
+      { title: 'Map', items: [
+        "Settings › Map › Right-click menu chooses which menu a right-click on the map opens: Native WME (WME beta 2.382 has its own), Studio’s, or RightClick Functions’ (RCF). Only the one you pick opens."
+      ] }
+    ] },
     { version: '4.3.5', groups: [
       { title: 'Studio', items: [
         "Studio reaches my site at its own address, wme-studio.com, now. Some networks and ad blockers turn away the old workers.dev address, and there bug reports, Discord verification and Cloud Sync said the server couldn’t be reached."
@@ -24444,6 +24503,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         const min = Number(input.min) || 0, max = Number(input.max) || 100, value = Number(input.value) || 0;
         input.style.setProperty('--range-fill', `${Math.max(0, Math.min(100, (value - min) * 100 / Math.max(1, max - min)))}%`);
       });
+      paintRightClick();
       const ownColors = current.compactMode && current.islandFill !== 'theme';
       qa('[data-setting]').forEach(button => button.setAttribute('aria-pressed', String(String(current[button.dataset.setting]) === button.dataset.value && !(ownColors && button.dataset.setting === 'theme'))));
       qa('[data-island-gradient]').forEach(button => button.setAttribute('aria-pressed', String(current.islandFill === 'gradient' && button.dataset.islandGradient === `${current.islandColor},${current.islandColor2}`)));
@@ -24481,12 +24541,27 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         if (reset) reset.hidden = !changed;
       }
     }
+    // 4.3.6: the right-click choice. RCF can be picked only when RightClick Functions is installed; the line under the
+    // name says when another menu still gets in the way.
+    function paintRightClick() {
+      const say = text => { try { return globalThis.WMEStudioI18n?.t?.(text) ?? text; } catch (_) { return text; } };
+      let rcf = false; try { rcf = !!(typeof unsafeWindow === 'undefined' ? window : unsafeWindow).WmeRightClickFunctionsApi; } catch (_) { rcf = false; }
+      const button = q('[data-setting="rightClickMenu"][data-value="rcf"]');
+      if (button) { button.disabled = !rcf && current.rightClickMenu !== 'rcf'; button.title = rcf ? '' : say('RightClick Functions isn’t installed'); }
+      const hint = q('[data-id="rightClickMenu-hint"]');
+      if (!hint) return;
+      const text = current.rightClickMenu === 'native' && rcf ? 'RightClick Functions is installed and still opens its own menu. Turn it off in its tab to get WME’s.'
+        : current.rightClickMenu === 'rcf' && !rcf ? 'RightClick Functions isn’t installed, so the map gets WME’s menu.'
+        : 'Which menu opens when you right-click the map. Hold Shift to skip Studio’s menu.';
+      hint.setAttribute('data-ws-keep', ''); if (hint.textContent !== say(text)) hint.textContent = say(text);
+    }
     function settingPatch(key, value) {
       const kind = typeof config.defaults[key];
       if (kind === 'number') value = Number(value); else if (kind === 'boolean') value = value === 'true';
       const patch = { [key]: value };
       if (key === 'theme' && current.compactMode && current.islandFill !== 'theme') patch.islandFill = 'theme';
       if (key === 'eyeSaverSchedule' && value !== 'off' && current.eyeSaver === 0) patch.eyeSaver = 50;
+      if (key === 'rightClickMenu') patch.contextMenu = value === 'studio';
       return patch;
     }
     function scheduleText(node, text) {
@@ -26408,7 +26483,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
         commands = [page('Open settings','home','settings options preferences'),page('Saved workspaces','layout','profiles presets layouts save','workspace-profiles'),page('Backup & restore','studio','import export backup restore','backup-tools'),page('Report a bug','bug','bug report issue problem feedback support help','bugReport'),page('Verify on Discord','bug','discord verify verification code editor roles rank','discordVerify'),...(globalThis.WMEStudioDiscord?.invite ? [{label:translate('Join the Discord'),category:'Studio',keywords:'discord chat community server help questions',run:()=>window.open(globalThis.WMEStudioDiscord.invite,'_blank','noopener')}] : []),
           setting('Presets','layout','preset-current','starting layout balanced left-handed review desk wide header'),setting('Header width','layout','compactHeaderWidth','floating header extend full page'),setting('HUD size','layout','hudScale','floating scale islands header'),
           setting('Accent colour','look','accent','color highlight custom'),setting('Island color','look','islandFill','islands background colour gradient custom contrast'),setting('Color intensity','look','islandIntensity','island colour gradient strength strong soft muted vivid blend'),setting('Corners','look','corners','flat soft round shape'),setting('Font size','look','fontScale','text scale'),setting('Eye saver','map','eyeSaver','warm night comfort'),setting('Dark at night','look','themeSchedule','automatic auto dark mode night sunset sunrise time light switch schedule'),setting('Eye saver schedule','map','eyeSaverSchedule','automatic night sunset sunrise time warm hours'),setting('Interface animations','look','motion','motion reduce'),setting('Show tooltips','look','showTooltips','hover hints labels buttons controls'),setting('Next follows the issue tracker','panels','requestNextInTracker','next request send order list nearest'),setting('Custom scrollbars','look','customScrollbars','scroll bar slim rounded'),setting('Glass opacity','look','compactIslandOpacity','transparency floating islands'),setting('Match supported add-ons','look','addons','scripts theme integration'),
-          setting('Satellite brightness','map','satelliteBrightness','imagery dim'),setting('Viewport brightness','map','viewportBrightness','map dim'),setting('GPS points opacity','map','gpsOpacity','traces transparent'),setting('GPS points below roads','map','gpsBelowRoads','traces order layers'),setting('Open the + menu on click','map','createMenuClick','plus add create hover click menu roads places'),setting('Studio right-click menu','map','contextMenu','context menu right click mouse coordinates permalink copy'),setting('Show the zoom level','map','showZoomLevel','zoom level number scale plus minus buttons'),
+          setting('Satellite brightness','map','satelliteBrightness','imagery dim'),setting('Viewport brightness','map','viewportBrightness','map dim'),setting('GPS points opacity','map','gpsOpacity','traces transparent'),setting('GPS points below roads','map','gpsBelowRoads','traces order layers'),setting('Open the + menu on click','map','createMenuClick','plus add create hover click menu roads places'),setting('Right-click menu','map','rightClickMenu','context menu right click mouse coordinates permalink copy native wme rcf rightclick functions'),setting('Show the zoom level','map','showZoomLevel','zoom level number scale plus minus buttons'),
           setting('Case file request window','panels','requestCaseFile','ur update request case conversation status waiting reply'),setting('Quiet days before closing','panels','requestQuietDays','ur request quiet days close reminder reporter'),setting('Leave replies and reminders to URC-E','panels','urceHandoff','urce urcomments enhanced comments replies reminders close'),setting('Compact request panel','panels','compactRequests','ur update request window'),setting('Closure status colours','map','closureColors','road closures active upcoming ended colour color filter status'),setting('Script names on the tabs','panels','scriptTabNames','scripts userscripts tabs names icons full names bar'),setting('Close the request after replying','panels','closeAfterReply','ur request reply send comment close auto'),setting('Enable Screen displays','screens','screenDisplays','touch screen tablet tap select multiple segments places nodes several'),setting('Draw a road','screens','screenDrawButton','touch draw new road segment create add points snap junction finish'),setting('Shape a road','screens','screenShapeButton','touch shape geometry points vertex vertices move add delete junction node drag snap undo redo'),setting('Road between two segments','screens','screenRoadButton','touch select road path street between segments'),setting('Long-press for the right-click menu','screens','screenLongPress','touch hold press context menu right click'),setting('Visible discussion messages','panels','discussionVisible','ur comments conversation'),setting('Reply box height','panels','replyLines','ur reply comment box lines tall grow scroll textarea'),setting('Panel size','panels','panelScale','scale side panel'),setting('Reset panel sizes','panels','resetPanelSizes','dragged width height'),setting('Two-column Map Layers','panels','layerColumnsToggle','columns'),
           setting('Language','studio','language','locale translation'),setting('Command palette shortcut','studio','shortcut','keybind hotkey keyboard keys'),setting('Reset settings','studio','reset','defaults restore'),setting('Guide for script developers','developers','dev-tabs','developer api adapt compatibility script tab icon name theme variables css'),
           {label:translate('Arrange layout'),category:'Workspace',keywords:'move position panels islands controls hide split custom island buttons',disabled:!prefs.enabled || !matchMedia(globalThis.WMEStudioSafari.viewport).matches,run:async()=>{await cfg.write({compactMode:true});globalThis.WMEStudioCompactLayout.open();}},
@@ -26490,12 +26565,19 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     let enabled = true, host = null, shadow = null, menu = null, toastTimer = 0, openedAt = 0, gesture = null;
     let sdk = null, sdkRequested = false;
 
-    globalThis.WMEStudioSettings?.read().then(value => { enabled = value.contextMenu !== false; }).catch(error => reportStudioError('Reading the right-click menu setting', error));
-    chrome.storage.onChanged.addListener(changes => {
-      const item = changes['wmeStudio.contextMenu'];
-      if (!item) return;
-      enabled = item.newValue !== false;
+    // 4.3.6: Settings › Map › Right-click menu: WME's own (WME beta 2.382 has one), Studio's, or RightClick Functions'.
+    // Only with Studio's does Studio take the right-click; with the others it stays out of the way.
+    let mode = 'studio';
+    const applyMode = value => {
+      mode = ['native', 'studio', 'rcf'].includes(value) ? value : 'studio';
+      enabled = mode === 'studio';
+      document.documentElement.setAttribute('data-wme-studio-right-click', mode);
       if (!enabled) close();
+    };
+    globalThis.WMEStudioSettings?.read().then(value => applyMode(value.rightClickMenu ?? (value.contextMenu === false ? 'native' : 'studio'))).catch(error => reportStudioError('Reading the right-click menu setting', error));
+    chrome.storage.onChanged.addListener(changes => {
+      const item = changes['wmeStudio.rightClickMenu'];
+      if (item) applyMode(item.newValue);
     });
 
     function getSDK() {
@@ -26909,6 +26991,7 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     }
 
     function takeOverOtherMenu() {
+      if (!enabled) return false;
       const other = document.querySelector('.wmeRcMenu');
       if (!other) return false;
       try { document.documentElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, clientX: -100, clientY: -100 })); } catch (_) {   }
