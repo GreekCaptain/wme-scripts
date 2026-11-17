@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.6
+// @version      4.3.7
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -433,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.6';
+  const USERSCRIPT_VERSION = '4.3.7';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -27605,8 +27605,11 @@ ${studioControlsCSS()}
       return new Promise(resolve => {
         const done = (status, text) => { let json = null; try { json = JSON.parse(text); } catch (_) {   } resolve({ status, data: json, text }); };
         try {
-          if (typeof GM_xmlhttpRequest === 'function') GM_xmlhttpRequest({ method: 'POST', url, headers, data, anonymous: true, timeout: 20000, onload: r => done(r.status, r.responseText || ''), onerror: () => done(0, ''), ontimeout: () => done(0, '') });
-          else fetch(url, { method: 'POST', headers, body: data, mode: 'cors' }).then(async r => done(r.status, await r.text())).catch(() => done(0, ''));
+          // The page's own request when the userscript manager's can't get through (a user in Cuba, report on the
+          // Discord: wme-studio.com opened in the browser, but Verify said it couldn't reach it). My site allows WME's origin.
+          const viaPage = () => fetch(url, { method: 'POST', headers, body: data, mode: 'cors', credentials: 'omit' }).then(async r => done(r.status, await r.text())).catch(() => done(0, ''));
+          if (typeof GM_xmlhttpRequest === 'function') GM_xmlhttpRequest({ method: 'POST', url, headers, data, anonymous: true, timeout: 20000, onload: r => (r.status ? done(r.status, r.responseText || '') : viaPage()), onerror: viaPage, ontimeout: viaPage });
+          else viaPage();
         } catch (_) { done(0, ''); }
       });
     }
