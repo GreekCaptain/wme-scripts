@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.7
+// @version      4.3.8
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -433,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.7';
+  const USERSCRIPT_VERSION = '4.3.8';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -26524,6 +26524,52 @@ html[data-wme-studio-layout-editing="on"] :is(.ws-quick-replies,.ws-reply-detail
     event.preventDefault();event.stopImmediatePropagation();openStudioCommands();
   },true);
 
+  // 4.3.8: WME's Google place window (Project Biggs) opens beside the side panel, in Studio's look and theme.
+  (() => {
+    const placed = new WeakSet();
+    const look = document.createElement('style');
+    look.id = 'wme-studio-google-place-card';
+    look.textContent = `
+html[data-wme-studio="on"] #google-place-card:not([data-window-hidden="true"]) { background: var(--wme-studio-surface, #292d31) !important; color: var(--wme-studio-text, #edf1f4) !important; border: 1px solid var(--wme-studio-border, #3d444b) !important; border-radius: var(--wme-studio-panel-radius, 16px) !important; box-shadow: 0 18px 48px rgba(0, 0, 0, .4) !important; overflow: visible !important; }
+html[data-wme-studio="on"][data-wme-studio-theme="light"] #google-place-card { box-shadow: 0 18px 48px rgba(15, 23, 42, .18) !important; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] { display: flex !important; align-items: center !important; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 0 8px 0 16px !important; background: transparent !important; border-radius: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--wme-studio-text, #edf1f4) 12%, transparent) !important; cursor: grab !important; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] :not(wz-button, wz-button *) { cursor: inherit !important; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"]:active, html[data-wme-studio="on"]:has(#google-place-card[class*="moving--"]), html[data-wme-studio="on"]:has(#google-place-card[class*="moving--"]) * { cursor: grabbing !important; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] > wz-subhead4 { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 20px; color: var(--wme-studio-text, #edf1f4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; cursor: pointer; color: var(--wme-studio-text-muted, #99a4ae); transition: background-color .12s, color .12s; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-tooltip-source { display: block; position: relative; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-tooltip-target { position: absolute; inset: 0; pointer-events: none; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-button:hover { background: var(--wme-studio-hover, #363c42); color: var(--wme-studio-text, #edf1f4); }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details) { background: transparent !important; padding: 8px 2px 8px 8px !important; border-radius: 0 0 var(--wme-studio-panel-radius, 16px) var(--wme-studio-panel-radius, 16px) !important; overflow: hidden auto !important; overscroll-behavior: contain; scrollbar-width: auto !important; scrollbar-color: auto !important; }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-track, html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-corner { background: transparent; }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-thumb { min-height: 36px; border: 3px solid transparent; border-radius: 999px; background-clip: padding-box; background-color: color-mix(in srgb, var(--wme-studio-text-muted, #8b96a1) 45%, transparent); }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--wme-studio-accent, #0099ff) 75%, transparent); }
+html[data-wme-studio="on"] #google-place-card > :has(> gmp-place-details)::-webkit-scrollbar-thumb:active { background-color: var(--wme-studio-accent, #0099ff); }
+html[data-wme-studio="on"] #google-place-card gmp-place-details { flex: none !important; height: auto !important; max-height: none !important; overflow: visible !important; color-scheme: inherit !important; background: transparent !important; border-radius: 12px !important;
+  --gmp-mat-color-surface: var(--wme-studio-surface, #292d31); --gmp-mat-color-on-surface: var(--wme-studio-text, #edf1f4); --gmp-mat-color-on-surface-variant: var(--wme-studio-text-muted, #99a4ae);
+  --gmp-mat-color-primary: var(--wme-studio-accent, #0099ff); --gmp-mat-color-outline-decorative: var(--wme-studio-border, #3d444b);
+  --gmp-mat-color-secondary-container: color-mix(in srgb, var(--wme-studio-accent, #0099ff) 18%, transparent); --gmp-mat-color-on-secondary-container: var(--wme-studio-text, #edf1f4);
+  --gmp-mat-color-neutral-container: var(--wme-studio-hover, #363c42); --gmp-mat-color-on-neutral-container: var(--wme-studio-text, #edf1f4); --gmp-mat-font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+html[data-wme-studio="on"][data-wme-studio-theme="light"] #google-place-card gmp-place-details { color-scheme: light !important; }
+html[data-wme-studio="on"]:is([data-wme-studio-theme="dark"], [data-wme-studio-theme="black"]) #google-place-card gmp-place-details { color-scheme: dark !important; }
+`;
+    (document.head || document.documentElement).append(look);
+    const place = card => {
+      if (placed.has(card) || document.documentElement.getAttribute('data-wme-studio') !== 'on') return;
+      const box = card.getBoundingClientRect();
+      if (!box.width) return;
+      placed.add(card);
+      let edge = 0;
+      for (const node of document.querySelectorAll('#sidebar, #drawer')) {
+        const r = node.getBoundingClientRect();
+        if (r.width && r.height && getComputedStyle(node).visibility !== 'hidden' && r.left < innerWidth / 2 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top) edge = Math.max(edge, r.right);
+      }
+      if (edge) card.style.translate = `${Math.round(Math.max(0, Math.min(edge + 12 - box.left, innerWidth - 8 - box.right)))}px 0`;
+    };
+    new MutationObserver(() => { const card = document.getElementById('google-place-card'); if (card) place(card); }).observe(document.documentElement, { childList: true, subtree: true });
+  })();
   const studioContextMenu = (() => {
     const page = typeof unsafeWindow === 'undefined' ? window : unsafeWindow;
     const HOST_ID = 'wme-studio-context-menu';
