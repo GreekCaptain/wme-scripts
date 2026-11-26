@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Studio
 // @namespace    https://www.waze.com/editor
-// @version      4.3.8
+// @version      4.3.9
 // @description  Waze Map Editor redesign with customizable floating compact-mode islands, Light, Dark and Full Black themes, custom accents, add-on styling and map display controls.
 // @author       GreekCaptain
 // @license      MIT
@@ -75,7 +75,7 @@ function wmeStudioBridgeNote(text, bad) {
   } catch (_) {   }
 }
 
-const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.6-2026-11-17z131', cloudSync: '4.3.0-2026-10-29' };
+const WME_STUDIO_WANTED = { resources: '4.2.1-2026-10-28', screenDisplays: '4.0.0-2026-10-26z50', interface: '4.3.6-2026-11-17z131', cloudSync: '4.3.8-2026-11-24' };
 function wmeStudioCompareLibraryBuild(loaded, wanted) {
   if (loaded === wanted) return 0;
   const parse = value => {
@@ -433,7 +433,7 @@ const wmeStudioMain = () => {
     }
   };
 
-  const USERSCRIPT_VERSION = '4.3.8';
+  const USERSCRIPT_VERSION = '4.3.9';
   const STUDIO_BETA = typeof WME_STUDIO_BETA === 'object' && WME_STUDIO_BETA ? WME_STUDIO_BETA : null;
   const STUDIO_BETA_LABEL = STUDIO_BETA || (() => { try { const version = String(GM_info?.script?.version || ''), build = /-beta\.(\d+)$/.exec(version); return build ? { serial: Number(build[1]), version } : null; } catch (_) { return null; } })();
   const STUDIO_VERIFY_LINK = (() => {
@@ -26534,7 +26534,7 @@ html[data-wme-studio="on"] #google-place-card:not([data-window-hidden="true"]) {
 html[data-wme-studio="on"][data-wme-studio-theme="light"] #google-place-card { box-shadow: 0 18px 48px rgba(15, 23, 42, .18) !important; }
 html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] { display: flex !important; align-items: center !important; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 0 8px 0 16px !important; background: transparent !important; border-radius: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--wme-studio-text, #edf1f4) 12%, transparent) !important; cursor: grab !important; }
 html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] :not(wz-button, wz-button *) { cursor: inherit !important; }
-html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"]:active, html[data-wme-studio="on"]:has(#google-place-card[class*="moving--"]), html[data-wme-studio="on"]:has(#google-place-card[class*="moving--"]) * { cursor: grabbing !important; }
+html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"]:active, html[data-wme-studio="on"] #google-place-card[class*="moving--"], html[data-wme-studio="on"] #google-place-card[class*="moving--"] * { cursor: grabbing !important; }
 html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] > wz-subhead4 { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 20px; color: var(--wme-studio-text, #edf1f4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; cursor: pointer; color: var(--wme-studio-text-muted, #99a4ae); transition: background-color .12s, color .12s; }
 html[data-wme-studio="on"] #google-place-card > [aria-roledescription="draggable"] wz-tooltip-source { display: block; position: relative; }
